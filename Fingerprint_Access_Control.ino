@@ -1,3 +1,6 @@
+// clean up
+// when there is an error it returns and it still saves. I have to prevent that
+// tell them to be cleaning the sensor
 #include "icons.h"
 #include <Adafruit_Fingerprint.h>
 #include <EEPROM.h>
@@ -11,10 +14,10 @@
 #define AS608_TX PA2
 #define AS608_RX PA3
 
-#define SPEAKER_PIN PA11
-#define DOOR_PIN PA12
+#define SPEAKER_PIN PA15
+#define DOOR_PIN PC13
 
-#define MAX_USERS 300
+#define MAX_USERS 200
 
 #define USART1
 
@@ -22,44 +25,47 @@ struct UserRecord {
   uint16_t id;    // Fingerprint ID from sensor (e.g., 1 to 50) also serve as eeprom address
   char name[20];  // User name (e.g., "Alex")
   bool isMaster;
-  bool active;
 };
 
-Uart mySerial(AS608_RX,AS608_TX); //rxtx
+Uart mySerial(AS608_RX, AS608_TX);  //rxtx
 Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
 
 //const char modes[4] = {"access","enroll","delete","log"};
-char *mode = "access"; // start with access control mode
-bool doorLocked = true; // door is locked initially.
-bool UserExist = false
+char *mode = "access";   // start with access control mode
+bool doorLocked = true;  // door is locked initially.
+bool UsersExists = false;
 
 uint8_t readnumber(void);
-int writeName(); // handle name input
-bool getUser(uint16_t userID, UserRecord &user);
+int writeName();  // handle name input
+bool userExist(uint16_t userID, UserRecord &user);
 int getEnrolledCount();
-bool hasEnrolledUsers();
 int getEEPROMAddress(uint16_t userID);
+uint8_t getFingerprintEnroll();
+void saveUser(uint16_t userID, const char *name, uint8_t level);
 
 
-uint8_t id;
+//uint8_t id;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
-  pinMode(DOOR_PIN,OUTPUT); 
+  delay(5000);
+  Serial.println("starting");
+  Serial.printf("EEPROM size: %i\n", EEPROM.length());
+  pinMode(DOOR_PIN, OUTPUT);
 
   for (int i = 27; i <= 30; i++) {
     pinMode(i, INPUT_PULLUP);  // set all button pins as input
   }
 
-  digitalWrite(DOOR_PIN,0); //lock the door
-// show loading animation with my logo
-// play welcome sound
+  digitalWrite(DOOR_PIN, 0);  //lock the door
+                              // show loading animation with my logo
+                              // play welcome sound
 
-// adafruit finger print set up functions
+  // adafruit finger print set up functions
   delay(100);
   Serial.println("\n\nFingerprint sensor enrollment");
 
-    finger.begin(57600);
+  finger.begin(57600);
 
   if (finger.verifyPassword()) {
     Serial.println("Found fingerprint sensor!");
@@ -70,50 +76,82 @@ void setup() {
 
   Serial.println(F("Reading sensor parameters"));
   finger.getParameters();
-  Serial.print(F("Status: 0x")); Serial.println(finger.status_reg, HEX);
-  Serial.print(F("Sys ID: 0x")); Serial.println(finger.system_id, HEX);
-  Serial.print(F("Capacity: ")); Serial.println(finger.capacity);
-  Serial.print(F("Security level: ")); Serial.println(finger.security_level);
-  Serial.print(F("Device address: ")); Serial.println(finger.device_addr, HEX);
-  Serial.print(F("Packet len: ")); Serial.println(finger.packet_len);
-  Serial.print(F("Baud rate: ")); Serial.println(finger.baud_rate);
-// show lock icon
+  Serial.print(F("Status: 0x"));
+  Serial.println(finger.status_reg, HEX);
+  Serial.print(F("Sys ID: 0x"));
+  Serial.println(finger.system_id, HEX);
+  Serial.print(F("Capacity: "));
+  Serial.println(finger.capacity);
+  Serial.print(F("Security level: "));
+  Serial.println(finger.security_level);
+  Serial.print(F("Device address: "));
+  Serial.println(finger.device_addr, HEX);
+  Serial.print(F("Packet len: "));
+  Serial.println(finger.packet_len);
+  Serial.print(F("Baud rate: "));
+  Serial.println(finger.baud_rate);
+  // show lock icon
 
-// check if any user exist
+  // check if any user exist
   // if yes set mode to enroll
-  if(hasEnrolledUsers()){
-    mode = "enroll";
+  UserRecord user;
+  for (int id = 1; id <= MAX_USERS; id++) {
+    if (!userExist(id, user)) {
+      mode = "enroll";
+      Serial.println("enroll mode");
+      break;  // Found at least one valid enrolled user
+    }
   }
-  // else  mode remains  access
+  // I limited max users to 200 because of the function above.
+  // if
+
+  // else  mode remains as access
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-
-  while(mode=="enroll"){
+  //Serial.println("hello loop");
+  while (mode == "enroll") {
+    UserRecord user;
     // get number of available records
-    int current_id = 1+ getEnrolledCount();
-      // if > 299 print no space icon
-    if(current_id>MAX_USERS){
+    int current_id = 1 + getEnrolledCount();
+    // if > 299 print no space icon
+    if (current_id > MAX_USERS) {
       Serial.println("no space for new enrollment");
       mode = "access";
+      Serial.println("access mode");
       break;
     }
-  
+
     // do enroll stuff
     Serial.println("Ready to enroll a fingerprint!");
-      // ask for name and input name
-
-
+    user.id = current_id;
+    // ask for name and input name
+    strncpy(user.name, "default", sizeof(user.name) - 1);
+    user.name[sizeof(user.name) - 1] = '\0';  // Ensure null-termination
+    // user.name = writeName()
     // if no records then make the person master during enroll
+    if (!UsersExists) {
+      user.isMaster = true;
+      Serial.println("user is a master");
+    }
     // else ask if the person should be made master
+    else {
+      Serial.println("Master?");
+    }
+    while (!getFingerprintEnroll(current_id))
+      ;
+    saveUser(user);
     // save details to sensor and eeprom
     //exit enrolling using left button
+    // mode="access";
+    // break;
   }
 
-  while(mode=="access"){
+  while (mode == "access") {
+    //Serial.println("hello access");
     // show lock icon
-    // do check 
+    // do check
     // if wrong show invalid fingerprint icon
     // if correct show unlock icon and name
     // unlock the door
@@ -123,7 +161,8 @@ void loop() {
     // if exist is pressed
   }
 
-  while(mode=="delete"){
+  while (mode == "delete") {
+    Serial.println("hello delete");
     //int id=1;
     // get total records
 
@@ -132,17 +171,18 @@ void loop() {
     // id cannot be less than 1
     // id cannot be greater than number of records
     // exit button
-
   }
 
-  while(mode =="log"){
+  while (mode == "log") {
+    Serial.println("hello log");
     // check if master if not locked the device
     // just show log icon
     // if cmd is get log send log, delete from mem and exit
     // if exit is pressed break
   }
 
-  while(mode == "locked"){
+  while (mode == "locked") {
+    Serial.println("hello locked");
     // check if master
     // if master, unlock door and switch to access mode
     // else show message: not master
@@ -157,7 +197,8 @@ uint8_t readnumber(void) {
   uint8_t num = 0;
 
   while (num == 0) {
-    while (! Serial.available());
+    while (!Serial.available())
+      ;
     num = Serial.parseInt();
   }
   return num;
@@ -166,39 +207,189 @@ uint8_t readnumber(void) {
 int getEnrolledCount() {
   int count = 0;
   UserRecord user;
-  
+
   for (int id = 1; id <= MAX_USERS; id++) {
-    if (getUser(id, user)) { // Returns user.active
+    if (userExist(id, user)) {  // Returns user.active
       count++;
     }
   }
+  Serial.printf("count: %i\n", count);
   return count;
 }
 
 
-bool hasEnrolledUsers() {
-  UserRecord user;
-  
-  for (int id = 1; id <= MAX_USERS; id++) {
-    if (getUser(id, user)) {
-      return true; // Found at least one valid enrolled user
-    }
-  }
-  return false; // Storage is completely empty
-}
 
-bool getUser(uint16_t userID, UserRecord &user) {
+bool userExist(uint16_t userID, UserRecord &user) {
   int addr = getEEPROMAddress(userID);
   EEPROM.get(addr, user);
-  return user.active; // Returns false if slot is unassigned
+  // Serial.printf("userID: %i, user.id: %i\n",userID,user.id);
+  // Serial.printf("user.active: %i\n",user.active);
+  return (userID == user.id);  // Returns false if slot is unassigned
 }
 
 int getEEPROMAddress(uint16_t userID) {
   return (userID - 1) * sizeof(UserRecord);
   // each user takes 24bytes, so the next
-  // user will be 24 bytes away from the 
+  // user will be 24 bytes away from the
   // previous user
 }
+
+uint8_t getFingerprintEnroll(uint8_t id) {
+
+  int p = -1;
+  Serial.print("Waiting for valid finger to enroll as #");
+  Serial.println(id);
+  while (p != FINGERPRINT_OK) {
+    p = finger.getImage();
+    switch (p) {
+      case FINGERPRINT_OK:
+        Serial.println("Image taken");
+        break;
+      case FINGERPRINT_NOFINGER:
+        Serial.print(".");
+        break;
+      case FINGERPRINT_PACKETRECIEVEERR:
+        Serial.println("Communication error");
+        break;
+      case FINGERPRINT_IMAGEFAIL:
+        Serial.println("Imaging error");
+        break;
+      default:
+        Serial.println("Unknown error");
+        break;
+    }
+  }
+
+  // OK success!
+
+  p = finger.image2Tz(1);
+  switch (p) {
+    case FINGERPRINT_OK:
+      Serial.println("Image converted");
+      break;
+    case FINGERPRINT_IMAGEMESS:
+      Serial.println("Image too messy");
+      return p;
+    case FINGERPRINT_PACKETRECIEVEERR:
+      Serial.println("Communication error");
+      return p;
+    case FINGERPRINT_FEATUREFAIL:
+      Serial.println("Could not find fingerprint features");
+      return p;
+    case FINGERPRINT_INVALIDIMAGE:
+      Serial.println("Could not find fingerprint features");
+      return p;
+    default:
+      Serial.println("Unknown error");
+      return p;
+  }
+
+  Serial.println("Remove finger");
+  delay(2000);
+  p = 0;
+  while (p != FINGERPRINT_NOFINGER) {
+    p = finger.getImage();
+  }
+  Serial.print("ID ");
+  Serial.println(id);
+  p = -1;
+  Serial.println("Place same finger again");
+  while (p != FINGERPRINT_OK) {
+    p = finger.getImage();
+    switch (p) {
+      case FINGERPRINT_OK:
+        Serial.println("Image taken");
+        break;
+      case FINGERPRINT_NOFINGER:
+        Serial.print(".");
+        break;
+      case FINGERPRINT_PACKETRECIEVEERR:
+        Serial.println("Communication error");
+        break;
+      case FINGERPRINT_IMAGEFAIL:
+        Serial.println("Imaging error");
+        break;
+      default:
+        Serial.println("Unknown error");
+        break;
+    }
+  }
+
+  // OK success!
+
+  p = finger.image2Tz(2);
+  switch (p) {
+    case FINGERPRINT_OK:
+      Serial.println("Image converted");
+      break;
+    case FINGERPRINT_IMAGEMESS:
+      Serial.println("Image too messy");
+      return p;
+    case FINGERPRINT_PACKETRECIEVEERR:
+      Serial.println("Communication error");
+      return p;
+    case FINGERPRINT_FEATUREFAIL:
+      Serial.println("Could not find fingerprint features");
+      return p;
+    case FINGERPRINT_INVALIDIMAGE:
+      Serial.println("Could not find fingerprint features");
+      return p;
+    default:
+      Serial.println("Unknown error");
+      return p;
+  }
+
+  // OK converted!
+  Serial.print("Creating model for #");
+  Serial.println(id);
+
+  p = finger.createModel();
+  if (p == FINGERPRINT_OK) {
+    Serial.println("Prints matched!");
+  } else if (p == FINGERPRINT_PACKETRECIEVEERR) {
+    Serial.println("Communication error");
+    return p;
+  } else if (p == FINGERPRINT_ENROLLMISMATCH) {
+    Serial.println("Fingerprints did not match");
+    return p;
+  } else {
+    Serial.println("Unknown error");
+    return p;
+  }
+
+  Serial.print("ID ");
+  Serial.println(id);
+  p = finger.storeModel(id);
+  if (p == FINGERPRINT_OK) {
+    Serial.println("Stored!");
+  } else if (p == FINGERPRINT_PACKETRECIEVEERR) {
+    Serial.println("Communication error");
+    return p;
+  } else if (p == FINGERPRINT_BADLOCATION) {
+    Serial.println("Could not store in that location");
+    return p;
+  } else if (p == FINGERPRINT_FLASHERR) {
+    Serial.println("Error writing to flash");
+    return p;
+  } else {
+    Serial.println("Unknown error");
+    return p;
+  }
+
+  return true;
+}
+
+void saveUser(UserRecord &user) {
+
+  int addr = getEEPROMAddress(user.id);
+  EEPROM.put(addr, user);  // Writes directly to internal flash emulation
+
+  Serial.print("Saved user ");
+  Serial.print(user.name);
+  Serial.print(" at address ");
+  Serial.println(addr);
+}
+
 /*
 screens 
  enroll: should have an exit button
