@@ -5,6 +5,20 @@
 #include <Adafruit_Fingerprint.h>
 #include <EEPROM.h>
 
+#define VALID_MAGIC 0xA5
+
+#define DEBUG 1
+
+#if DEBUG == 1
+#define debug(x) Serial.print(x)
+#define debugln(x) Serial.println(x)
+#define debugf(...) Serial.printf(__VA_ARGS__)
+#else
+#define debug(x)
+#define debugln(x)
+#define debugf(...)
+#endif
+
 
 #define UP_BUTTON PB12
 #define DOWN_BUTTON PB13
@@ -22,9 +36,10 @@
 #define USART1
 
 struct UserRecord {
-  uint16_t id;    // Fingerprint ID from sensor (e.g., 1 to 50) also serve as eeprom address
-  char name[20];  // User name (e.g., "Alex")
-  bool isMaster;
+  uint8_t magic;          // 1 byte
+  uint16_t id;           // 2 bytesFingerprint ID from sensor (e.g., 1 to 50) also serve as eeprom address
+  char name[5];         // 5 bytes User name (e.g., "Alex")
+  uint8_t notMaster=1; //1 byte: 0 means user is a master
 };
 
 Uart mySerial(AS608_RX, AS608_TX);  //rxtx
@@ -34,6 +49,7 @@ Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
 char *mode = "access";   // start with access control mode
 bool doorLocked = true;  // door is locked initially.
 bool UsersExists = false;
+int enrolledUsers = 0;
 
 uint8_t readnumber(void);
 int writeName();  // handle name input
@@ -44,11 +60,20 @@ uint8_t getFingerprintEnroll();
 void saveUser(uint16_t userID, const char *name, uint8_t level);
 
 
-//uint8_t id;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
+
+
   delay(5000);
+// it takes almost a second to overwrite a memory block, so I will just change the value of magic
+// update is faster, but takes too long, so I will just update magic
+//  debugln("clearing eeprom");
+//       for (int i = 0 ; i < EEPROM.length() ; i++) {
+//     EEPROM.update(i, 0xFF);
+//     debugf("cleared: %i\n",i);
+//   }
+  
   Serial.println("starting");
   Serial.printf("EEPROM size: %i\n", EEPROM.length());
   pinMode(DOOR_PIN, OUTPUT);
@@ -94,14 +119,12 @@ void setup() {
 
   // check if any user exist
   // if yes set mode to enroll
-  UserRecord user;
-  for (int id = 1; id <= MAX_USERS; id++) {
-    if (!userExist(id, user)) {
-      mode = "enroll";
-      Serial.println("enroll mode");
-      break;  // Found at least one valid enrolled user
-    }
+  enrolledUsers = getEnrolledCount();
+  if (enrolledUsers == 0) {
+    mode = "enroll";
+    Serial.println("No users found. Entering enroll mode.");
   }
+
   // I limited max users to 200 because of the function above.
   // if
 
@@ -114,7 +137,7 @@ void loop() {
   while (mode == "enroll") {
     UserRecord user;
     // get number of available records
-    int current_id = 1 + getEnrolledCount();
+    int current_id = 1 + enrolledUsers;
     // if > 299 print no space icon
     if (current_id > MAX_USERS) {
       Serial.println("no space for new enrollment");
@@ -127,21 +150,29 @@ void loop() {
     Serial.println("Ready to enroll a fingerprint!");
     user.id = current_id;
     // ask for name and input name
-    strncpy(user.name, "default", sizeof(user.name) - 1);
+    strncpy(user.name, "defa", sizeof(user.name) - 1);
     user.name[sizeof(user.name) - 1] = '\0';  // Ensure null-termination
     // user.name = writeName()
     // if no records then make the person master during enroll
     if (!UsersExists) {
-      user.isMaster = true;
+      user.notMaster = 0; // make master
       Serial.println("user is a master");
     }
     // else ask if the person should be made master
     else {
       Serial.println("Master?");
     }
-    while (!getFingerprintEnroll(current_id))
-      ;
-    saveUser(user);
+    while(1){
+    bool success = !getFingerprintEnroll(current_id);
+    //while (!getFingerprintEnroll(current_id));
+    if(success){
+      saveUser(user);
+      enrolledUsers++;
+      break;
+    }
+    debugln("failed to enroll");
+    delay(2000); // replace with millis() later
+    }
     // save details to sensor and eeprom
     //exit enrolling using left button
     // mode="access";
@@ -149,7 +180,8 @@ void loop() {
   }
 
   while (mode == "access") {
-    //Serial.println("hello access");
+    Serial.println("hello access");
+    delay(1000);
     // show lock icon
     // do check
     // if wrong show invalid fingerprint icon
@@ -224,7 +256,7 @@ bool userExist(uint16_t userID, UserRecord &user) {
   EEPROM.get(addr, user);
   // Serial.printf("userID: %i, user.id: %i\n",userID,user.id);
   // Serial.printf("user.active: %i\n",user.active);
-  return (userID == user.id);  // Returns false if slot is unassigned
+  return (user.magic == VALID_MAGIC);  // Returns false if slot is unassigned
 }
 
 int getEEPROMAddress(uint16_t userID) {
@@ -380,7 +412,7 @@ uint8_t getFingerprintEnroll(uint8_t id) {
 }
 
 void saveUser(UserRecord &user) {
-
+ user.magic = VALID_MAGIC;
   int addr = getEEPROMAddress(user.id);
   EEPROM.put(addr, user);  // Writes directly to internal flash emulation
 
@@ -391,6 +423,9 @@ void saveUser(UserRecord &user) {
 }
 
 /*
+get button pressed
+writeNAme
+deleting and buttons next
 screens 
  enroll: should have an exit button
  access screen
