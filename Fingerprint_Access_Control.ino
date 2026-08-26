@@ -1,9 +1,12 @@
-// clean up
-// when there is an error it returns and it still saves. I have to prevent that
 // tell them to be cleaning the sensor
-#include "icons.h"
-#include <Adafruit_Fingerprint.h>
 #include <EEPROM.h>
+#include "biometrics.h"
+#include "buttons.h"
+#include <STM32RTC.h>
+
+/* Get the rtc object */
+STM32RTC &rtc = STM32RTC::getInstance();
+
 
 #define VALID_MAGIC 0xA5
 
@@ -20,30 +23,18 @@
 #endif
 
 
-#define UP_BUTTON PB12
-#define DOWN_BUTTON PB13
-#define LEFT_BUTTON PB14
-#define RIGHT_BUTTON PB15
-
-#define AS608_TX PA2
-#define AS608_RX PA3
-
 #define SPEAKER_PIN PA15
 #define DOOR_PIN PC13
 
-#define MAX_USERS 200
-
-#define USART1
+#define MAX_USERS 300
 
 struct UserRecord {
   uint8_t magic;          // 1 byte
-  uint16_t id;           // 2 bytesFingerprint ID from sensor (e.g., 1 to 50) also serve as eeprom address
-  char name[5];         // 5 bytes User name (e.g., "Alex")
-  uint8_t notMaster=1; //1 byte: 0 means user is a master
+  uint8_t id;             // 1 bytes Fingerprint ID from sensor (e.g., 1 to 50) also serve as eeprom address
+  char name[5];           // 5 bytes User name (e.g., "Alex")
+  uint8_t notMaster = 1;  //1 byte: 0 means user is a master
 };
 
-Uart mySerial(AS608_RX, AS608_TX);  //rxtx
-Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
 
 //const char modes[4] = {"access","enroll","delete","log"};
 char *mode = "access";   // start with access control mode
@@ -51,31 +42,29 @@ bool doorLocked = true;  // door is locked initially.
 bool UsersExists = false;
 int enrolledUsers = 0;
 
-uint8_t readnumber(void);
+
 int writeName();  // handle name input
 bool userExist(uint16_t userID, UserRecord &user);
 int getEnrolledCount();
 int getEEPROMAddress(uint16_t userID);
-uint8_t getFingerprintEnroll();
-void saveUser(uint16_t userID, const char *name, uint8_t level);
+void saveUser(UserRecord &user);
+void timeConfig();
+char *getTime();
+char *getDate();
 
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
+  timeConfig();
 
-
+  while (!checkDisplay());
+  //displayLogo();
   delay(5000);
-// it takes almost a second to overwrite a memory block, so I will just change the value of magic
-// update is faster, but takes too long, so I will just update magic
-//  debugln("clearing eeprom");
-//       for (int i = 0 ; i < EEPROM.length() ; i++) {
-//     EEPROM.update(i, 0xFF);
-//     debugf("cleared: %i\n",i);
-//   }
-  
+  //EEPROM.update(0, 0xFF);
   Serial.println("starting");
-  Serial.printf("EEPROM size: %i\n", EEPROM.length());
+  debugf("EEPROM size: %i\n", EEPROM.length());
+
   pinMode(DOOR_PIN, OUTPUT);
 
   for (int i = 27; i <= 30; i++) {
@@ -88,33 +77,7 @@ void setup() {
 
   // adafruit finger print set up functions
   delay(100);
-  Serial.println("\n\nFingerprint sensor enrollment");
-
-  finger.begin(57600);
-
-  if (finger.verifyPassword()) {
-    Serial.println("Found fingerprint sensor!");
-  } else {
-    Serial.println("Did not find fingerprint sensor :(");
-    while (1) { delay(1); }
-  }
-
-  Serial.println(F("Reading sensor parameters"));
-  finger.getParameters();
-  Serial.print(F("Status: 0x"));
-  Serial.println(finger.status_reg, HEX);
-  Serial.print(F("Sys ID: 0x"));
-  Serial.println(finger.system_id, HEX);
-  Serial.print(F("Capacity: "));
-  Serial.println(finger.capacity);
-  Serial.print(F("Security level: "));
-  Serial.println(finger.security_level);
-  Serial.print(F("Device address: "));
-  Serial.println(finger.device_addr, HEX);
-  Serial.print(F("Packet len: "));
-  Serial.println(finger.packet_len);
-  Serial.print(F("Baud rate: "));
-  Serial.println(finger.baud_rate);
+  biometricsSetup();
   // show lock icon
 
   // check if any user exist
@@ -125,19 +88,21 @@ void setup() {
     Serial.println("No users found. Entering enroll mode.");
   }
 
-  // I limited max users to 200 because of the function above.
-  // if
-
-  // else  mode remains as access
+  debugln(getTime());
+  debugln(getDate());
 }
+/*
+if no user, check if master 
 
+figure out access, then come back to enroll
+*/
 void loop() {
   // put your main code here, to run repeatedly:
   //Serial.println("hello loop");
   while (mode == "enroll") {
     UserRecord user;
     // get number of available records
-    int current_id = 1 + enrolledUsers;
+    uint8_t current_id = 1 + enrolledUsers;
     // if > 299 print no space icon
     if (current_id > MAX_USERS) {
       Serial.println("no space for new enrollment");
@@ -148,6 +113,7 @@ void loop() {
 
     // do enroll stuff
     Serial.println("Ready to enroll a fingerprint!");
+
     user.id = current_id;
     // ask for name and input name
     strncpy(user.name, "defa", sizeof(user.name) - 1);
@@ -155,23 +121,43 @@ void loop() {
     // user.name = writeName()
     // if no records then make the person master during enroll
     if (!UsersExists) {
-      user.notMaster = 0; // make master
+      user.notMaster = 0;  // make master
       Serial.println("user is a master");
     }
     // else ask if the person should be made master
     else {
       Serial.println("Master?");
     }
-    while(1){
-    bool success = !getFingerprintEnroll(current_id);
-    //while (!getFingerprintEnroll(current_id));
-    if(success){
-      saveUser(user);
-      enrolledUsers++;
-      break;
+    while (1) {
+      uint8_t success = getFingerprintEnroll(current_id);
+      debugf("enrollment result %i\n", success);
+      if (success == 1) {
+        saveUser(user);
+        enrolledUsers++;
+        Serial.println("saved");
+        break;
+      } else if (success == 0xAA) {
+        debugln("cancled");
+        mode = "access";
+        break;
+      }
+      debugln("failed to enroll");
+      delay(2000);  // replace with millis() later
     }
-    debugln("failed to enroll");
-    delay(2000); // replace with millis() later
+
+    while (1) {
+      Serial.println("ENROLL AGAIN? Y/N");
+      uint8_t button = getButtonsState();
+      if (button == RIGHT) {
+        debugln("N");
+        break;
+      }
+      if (button == LEFT) {
+        debugln("Y");
+        mode = "access";
+        debugln("entering access mode");
+        break;
+      }
     }
     // save details to sensor and eeprom
     //exit enrolling using left button
@@ -180,8 +166,12 @@ void loop() {
   }
 
   while (mode == "access") {
-    Serial.println("hello access");
-    delay(1000);
+    //Serial.println("hello access");
+    displayTwoWords("Place", "Finger");// replace with finger image or animation
+    uint8_t button = getButtonsState();
+    getFingerprintID();
+    //debugf("%i button pressed\n", button);
+    //delay(1000);
     // show lock icon
     // do check
     // if wrong show invalid fingerprint icon
@@ -225,16 +215,6 @@ void loop() {
   // delay(500);
 }
 
-uint8_t readnumber(void) {
-  uint8_t num = 0;
-
-  while (num == 0) {
-    while (!Serial.available())
-      ;
-    num = Serial.parseInt();
-  }
-  return num;
-}
 
 int getEnrolledCount() {
   int count = 0;
@@ -266,153 +246,9 @@ int getEEPROMAddress(uint16_t userID) {
   // previous user
 }
 
-uint8_t getFingerprintEnroll(uint8_t id) {
-
-  int p = -1;
-  Serial.print("Waiting for valid finger to enroll as #");
-  Serial.println(id);
-  while (p != FINGERPRINT_OK) {
-    p = finger.getImage();
-    switch (p) {
-      case FINGERPRINT_OK:
-        Serial.println("Image taken");
-        break;
-      case FINGERPRINT_NOFINGER:
-        Serial.print(".");
-        break;
-      case FINGERPRINT_PACKETRECIEVEERR:
-        Serial.println("Communication error");
-        break;
-      case FINGERPRINT_IMAGEFAIL:
-        Serial.println("Imaging error");
-        break;
-      default:
-        Serial.println("Unknown error");
-        break;
-    }
-  }
-
-  // OK success!
-
-  p = finger.image2Tz(1);
-  switch (p) {
-    case FINGERPRINT_OK:
-      Serial.println("Image converted");
-      break;
-    case FINGERPRINT_IMAGEMESS:
-      Serial.println("Image too messy");
-      return p;
-    case FINGERPRINT_PACKETRECIEVEERR:
-      Serial.println("Communication error");
-      return p;
-    case FINGERPRINT_FEATUREFAIL:
-      Serial.println("Could not find fingerprint features");
-      return p;
-    case FINGERPRINT_INVALIDIMAGE:
-      Serial.println("Could not find fingerprint features");
-      return p;
-    default:
-      Serial.println("Unknown error");
-      return p;
-  }
-
-  Serial.println("Remove finger");
-  delay(2000);
-  p = 0;
-  while (p != FINGERPRINT_NOFINGER) {
-    p = finger.getImage();
-  }
-  Serial.print("ID ");
-  Serial.println(id);
-  p = -1;
-  Serial.println("Place same finger again");
-  while (p != FINGERPRINT_OK) {
-    p = finger.getImage();
-    switch (p) {
-      case FINGERPRINT_OK:
-        Serial.println("Image taken");
-        break;
-      case FINGERPRINT_NOFINGER:
-        Serial.print(".");
-        break;
-      case FINGERPRINT_PACKETRECIEVEERR:
-        Serial.println("Communication error");
-        break;
-      case FINGERPRINT_IMAGEFAIL:
-        Serial.println("Imaging error");
-        break;
-      default:
-        Serial.println("Unknown error");
-        break;
-    }
-  }
-
-  // OK success!
-
-  p = finger.image2Tz(2);
-  switch (p) {
-    case FINGERPRINT_OK:
-      Serial.println("Image converted");
-      break;
-    case FINGERPRINT_IMAGEMESS:
-      Serial.println("Image too messy");
-      return p;
-    case FINGERPRINT_PACKETRECIEVEERR:
-      Serial.println("Communication error");
-      return p;
-    case FINGERPRINT_FEATUREFAIL:
-      Serial.println("Could not find fingerprint features");
-      return p;
-    case FINGERPRINT_INVALIDIMAGE:
-      Serial.println("Could not find fingerprint features");
-      return p;
-    default:
-      Serial.println("Unknown error");
-      return p;
-  }
-
-  // OK converted!
-  Serial.print("Creating model for #");
-  Serial.println(id);
-
-  p = finger.createModel();
-  if (p == FINGERPRINT_OK) {
-    Serial.println("Prints matched!");
-  } else if (p == FINGERPRINT_PACKETRECIEVEERR) {
-    Serial.println("Communication error");
-    return p;
-  } else if (p == FINGERPRINT_ENROLLMISMATCH) {
-    Serial.println("Fingerprints did not match");
-    return p;
-  } else {
-    Serial.println("Unknown error");
-    return p;
-  }
-
-  Serial.print("ID ");
-  Serial.println(id);
-  p = finger.storeModel(id);
-  if (p == FINGERPRINT_OK) {
-    Serial.println("Stored!");
-  } else if (p == FINGERPRINT_PACKETRECIEVEERR) {
-    Serial.println("Communication error");
-    return p;
-  } else if (p == FINGERPRINT_BADLOCATION) {
-    Serial.println("Could not store in that location");
-    return p;
-  } else if (p == FINGERPRINT_FLASHERR) {
-    Serial.println("Error writing to flash");
-    return p;
-  } else {
-    Serial.println("Unknown error");
-    return p;
-  }
-
-  return true;
-}
 
 void saveUser(UserRecord &user) {
- user.magic = VALID_MAGIC;
+  user.magic = VALID_MAGIC;
   int addr = getEEPROMAddress(user.id);
   EEPROM.put(addr, user);  // Writes directly to internal flash emulation
 
@@ -420,6 +256,54 @@ void saveUser(UserRecord &user) {
   Serial.print(user.name);
   Serial.print(" at address ");
   Serial.println(addr);
+}
+
+void timeConfig() {
+  // Select RTC clock source: LSI_CLOCK, LSE_CLOCK or HSE_CLOCK.
+  // By default the LSI is selected as source.
+  rtc.setClockSource(STM32RTC::LSE_CLOCK);  // LSE is more accurate for clock based functions
+  rtc.begin();                              // initialize RTC 24H format
+  if (!rtc.isTimeSet()) {
+    Serial.println("time is not set, setting time");
+    byte hours, minutes, seconds;
+    sscanf(__TIME__, "%d:%d:%d", &hours, &minutes, &seconds);
+
+    //  Parse __DATE__ string (Format: "Mmm DD YYYY", e.g., "Aug 14 2026")
+    char monthStr[4];
+    int day, year;
+    sscanf(__DATE__, "%s %d %d", monthStr, &day, &year);
+
+    // Convert 3-letter month to a number (1-12)
+    int month = 1;
+    const char *months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+    for (int i = 0; i < 12; i++) {
+      if (strcmp(monthStr, months[i]) == 0) {
+        month = i + 1;
+        break;
+      }
+    }
+
+    // Convert 4-digit year to 2-digit year for the RTC library
+    int shortYear = year % 100;
+
+    // 3. Update the RTC
+    rtc.setTime(hours, minutes, seconds);
+    rtc.setDate(5, day, month, shortYear);  // Day of week defaults to 1 here
+  }
+  Serial.println("time has been set");
+}
+
+char *getTime() {
+  static char time[6];
+  snprintf(time, sizeof(time), "%02d:%02d", rtc.getHours(), rtc.getMinutes());
+  return time;
+}
+
+char *getDate() {
+  static char date[9];
+  snprintf(date, sizeof(date), "%02d/%02d/%02d", rtc.getDay(), rtc.getMonth(), rtc.getYear());
+  return date;
 }
 
 /*
