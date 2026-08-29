@@ -7,7 +7,7 @@
 #include "display.h"
 
 struct SensorRsp {
-  uint8_t id;
+  char *msg;
   bool isError;
 };
 

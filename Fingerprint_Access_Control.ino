@@ -58,7 +58,8 @@ void setup() {
   Serial.begin(115200);
   timeConfig();
 
-  while (!checkDisplay());
+  while (!checkDisplay())
+    ;
   //displayLogo();
   delay(5000);
   //EEPROM.update(0, 0xFF);
@@ -86,10 +87,14 @@ void setup() {
   if (enrolledUsers == 0) {
     mode = "enroll";
     Serial.println("No users found. Entering enroll mode.");
+  }else{
+    UsersExists = true;
+   debugf("found %i user(s)", enrolledUsers);
   }
 
   debugln(getTime());
   debugln(getDate());
+  clearDisplay();
 }
 /*
 if no user, check if master 
@@ -98,7 +103,32 @@ figure out access, then come back to enroll
 */
 void loop() {
   // put your main code here, to run repeatedly:
-  //Serial.println("hello loop");
+  while (mode == "menu") {
+    debugln("in menu");
+    displayMenu();
+    uint8_t button = getButtonsState();
+
+    if (button == UP) {
+      mode = "enroll";
+      break;
+    }
+
+    else if (button == DOWN) {
+      mode = "access";
+      break;
+    }
+
+    else if (button == LEFT) {
+      mode = "delete";
+      break;
+    }
+
+    else if (button == RIGHT) {
+      mode = "log";
+      break;
+    }
+  }
+
   while (mode == "enroll") {
     UserRecord user;
     // get number of available records
@@ -146,6 +176,9 @@ void loop() {
     }
 
     while (1) {
+      if(mode!="enroll"){
+        break;
+      }
       Serial.println("ENROLL AGAIN? Y/N");
       uint8_t button = getButtonsState();
       if (button == RIGHT) {
@@ -167,9 +200,20 @@ void loop() {
 
   while (mode == "access") {
     //Serial.println("hello access");
-    displayTwoWords("Place", "Finger");// replace with finger image or animation
+    displayTwoWords("Place", "Finger");  // replace with finger image or animation
     uint8_t button = getButtonsState();
-    getFingerprintID();
+
+    if (button == RIGHT) {
+      mode = "menu";
+      break;
+    }
+    SensorRsp rsp = getFingerprintID();
+    if (!rsp.isError) {
+      debugf("user with id %s unlocked the door\n", rsp.msg);
+    } else {
+      debugf("sensor err: %s\n", rsp.msg);
+    }
+
     //debugf("%i button pressed\n", button);
     //delay(1000);
     // show lock icon
@@ -185,6 +229,12 @@ void loop() {
 
   while (mode == "delete") {
     Serial.println("hello delete");
+    uint8_t button = getButtonsState();
+
+    if (button == RIGHT) {
+      mode = "menu";
+      break;
+    }
     //int id=1;
     // get total records
 
@@ -197,6 +247,12 @@ void loop() {
 
   while (mode == "log") {
     Serial.println("hello log");
+    uint8_t button = getButtonsState();
+
+    if (button == RIGHT) {
+      mode = "menu";
+      break;
+    }
     // check if master if not locked the device
     // just show log icon
     // if cmd is get log send log, delete from mem and exit
