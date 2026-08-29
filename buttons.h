@@ -28,6 +28,7 @@ struct navButton {
       state = 0;
     }
   }
+};
 
 uint8_t getButtonsState();
 

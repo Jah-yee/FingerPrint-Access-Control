@@ -6,7 +6,7 @@
 #define LEFT_BUTTON PB14
 #define RIGHT_BUTTON PB15
 
-navButton RIGHT_BUTTON(PB15)
+//navButton RIGHT_BUTTON(PB15)
 
 
 uint8_t getButtonsState() {
