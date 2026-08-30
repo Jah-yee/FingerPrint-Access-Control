@@ -1,31 +1,46 @@
 #include <Arduino.h>
 #include "buttons.h"
 
-#define UP_BUTTON PB12
-#define DOWN_BUTTON PB13
-#define LEFT_BUTTON PB14
-#define RIGHT_BUTTON PB15
+// #define UP_BUTTON PB12
+// #define DOWN_BUTTON PB13
+// #define LEFT_BUTTON PB14
+// #define RIGHT_BUTTON PB15
 
-//navButton RIGHT_BUTTON(PB15)
+navButton UP_BUTTON(PB12);
+navButton DOWN_BUTTON(PB13);
+navButton LEFT_BUTTON(PB14);
+navButton RIGHT_BUTTON(PB15);
 
 
-uint8_t getButtonsState() {
-  if (!digitalRead(LEFT_BUTTON)) {
-    return LEFT;
-  }
+void buttonConfig(){
 
-  else if (!digitalRead(RIGHT_BUTTON)) {
-    return RIGHT;
-  } 
-  
-  else if (!digitalRead(UP_BUTTON)){
-    return UP;
-  }
-  else if(!digitalRead(DOWN_BUTTON)){
-    return DOWN;
-  }
-  else {
-    return 0;
-  }
-  delay(500); // play loading animation
+  UP_BUTTON.begin();
+  DOWN_BUTTON.begin();
+  LEFT_BUTTON.begin();
+  RIGHT_BUTTON.begin();
+
+  attachInterrupt(digitalPinToInterrupt(UP_BUTTON.pin), navButton::isr<UP_BUTTON>, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(DOWN_BUTTON.pin), navButton::isr<DOWN_BUTTON>, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(LEFT_BUTTON.pin), navButton::isr<LEFT_BUTTON>, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(RIGHT_BUTTON.pin), navButton::isr<RIGHT_BUTTON>, CHANGE);
 }
+// uint8_t getButtonsState() {
+//   if (!digitalRead(LEFT_BUTTON)) {
+//     return LEFT;
+//   }
+
+//   else if (!digitalRead(RIGHT_BUTTON)) {
+//     return RIGHT;
+//   } 
+  
+//   else if (!digitalRead(UP_BUTTON)){
+//     return UP;
+//   }
+//   else if(!digitalRead(DOWN_BUTTON)){
+//     return DOWN;
+//   }
+//   else {
+//     return 0;
+//   }
+//   delay(500); // play loading animation
+// }

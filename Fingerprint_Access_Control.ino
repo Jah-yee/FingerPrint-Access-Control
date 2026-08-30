@@ -57,7 +57,7 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
   timeConfig();
-
+  buttonConfig();
   while (!checkDisplay())
     ;
   //displayLogo();
@@ -87,9 +87,9 @@ void setup() {
   if (enrolledUsers == 0) {
     mode = "enroll";
     Serial.println("No users found. Entering enroll mode.");
-  }else{
+  } else {
     UsersExists = true;
-   debugf("found %i user(s)", enrolledUsers);
+    debugf("found %i user(s)", enrolledUsers);
   }
 
   debugln(getTime());
@@ -106,27 +106,30 @@ void loop() {
   while (mode == "menu") {
     debugln("in menu");
     displayMenu();
-    uint8_t button = getButtonsState();
-
-    if (button == UP) {
-      mode = "enroll";
-      break;
+    while(1){
+      
     }
+    // uint8_t button = getButtonsState();
 
-    else if (button == DOWN) {
-      mode = "access";
-      break;
-    }
+    // if (button == UP) {
+    //   mode = "enroll";
+    //   break;
+    // }
 
-    else if (button == LEFT) {
-      mode = "delete";
-      break;
-    }
+    // else if (button == DOWN) {
+    //   mode = "access";
+    //   break;
+    // }
 
-    else if (button == RIGHT) {
-      mode = "log";
-      break;
-    }
+    // else if (button == LEFT) {
+    //   mode = "delete";
+    //   break;
+    // }
+
+    // else if (button == RIGHT) {
+    //   mode = "log";
+    //   break;
+    // }
   }
 
   while (mode == "enroll") {
@@ -176,21 +179,21 @@ void loop() {
     }
 
     while (1) {
-      if(mode!="enroll"){
+      if (mode != "enroll") {
         break;
       }
       Serial.println("ENROLL AGAIN? Y/N");
-      uint8_t button = getButtonsState();
-      if (button == RIGHT) {
-        debugln("N");
-        break;
-      }
-      if (button == LEFT) {
-        debugln("Y");
-        mode = "access";
-        debugln("entering access mode");
-        break;
-      }
+      // uint8_t button = getButtonsState();
+      // if (button == RIGHT) {
+      //   debugln("N");
+      //   break;
+      // }
+      // if (button == LEFT) {
+      //   debugln("Y");
+      //   mode = "access";
+      //   debugln("entering access mode");
+      //   break;
+      // }
     }
     // save details to sensor and eeprom
     //exit enrolling using left button
@@ -201,12 +204,17 @@ void loop() {
   while (mode == "access") {
     //Serial.println("hello access");
     displayTwoWords("Place", "Finger");  // replace with finger image or animation
-    uint8_t button = getButtonsState();
-
-    if (button == RIGHT) {
+    if (RIGHT_BUTTON.state == true) {
+      LEFT_BUTTON.state = false;
       mode = "menu";
       break;
     }
+    // uint8_t button = getButtonsState();
+
+    // if (button == RIGHT) {
+    //   mode = "menu";
+    //   break;
+    // }
     SensorRsp rsp = getFingerprintID();
     if (!rsp.isError) {
       debugf("user with id %s unlocked the door\n", rsp.msg);
@@ -229,12 +237,12 @@ void loop() {
 
   while (mode == "delete") {
     Serial.println("hello delete");
-    uint8_t button = getButtonsState();
+    // uint8_t button = getButtonsState();
 
-    if (button == RIGHT) {
-      mode = "menu";
-      break;
-    }
+    // if (button == RIGHT) {
+    //   mode = "menu";
+    //   break;
+    // }
     //int id=1;
     // get total records
 
@@ -247,12 +255,12 @@ void loop() {
 
   while (mode == "log") {
     Serial.println("hello log");
-    uint8_t button = getButtonsState();
+    // uint8_t button = getButtonsState();
 
-    if (button == RIGHT) {
-      mode = "menu";
-      break;
-    }
+    // if (button == RIGHT) {
+    //   mode = "menu";
+    //   break;
+    // }
     // check if master if not locked the device
     // just show log icon
     // if cmd is get log send log, delete from mem and exit

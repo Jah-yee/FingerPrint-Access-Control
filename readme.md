@@ -12,7 +12,6 @@ docs for cv and show off
 
 # Today
 [] use interrupts for buttons
-[] use a struct to create buttons, that come with their own state variable, interrupt pin, and isr function that checks their state
  getting user name
  let's take things step by step
 

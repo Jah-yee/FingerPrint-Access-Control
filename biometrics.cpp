@@ -59,11 +59,11 @@ uint8_t getFingerprintEnroll(uint8_t id) {
   Serial.println(id);
   displayTwoWords("PLACE", "FINGER");
   while (p != FINGERPRINT_OK) {
-    uint8_t button = getButtonsState();
-    if (button == RIGHT) {
-      // debugln("cancelled");
-      return 0xAA;
-    }
+    // uint8_t button = getButtonsState();
+    // if (button == RIGHT) {
+    //   // debugln("cancelled");
+    //   return 0xAA;
+    // }
     p = finger.getImage();
     switch (p) {
       case FINGERPRINT_OK:

@@ -43,7 +43,7 @@ void displayWord(char* word){
 }
 
 void displayMenu(){
-  //display.clearDisplay();
+  display.clearDisplay();
   display.setTextSize(2);               // Normal 1:1 pixel scale
   display.setTextColor(SSD1306_WHITE);  // Draw white text
   display.println("U - Enroll");
