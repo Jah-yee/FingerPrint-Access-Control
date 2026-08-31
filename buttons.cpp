@@ -14,15 +14,10 @@ navButton RIGHT_BUTTON(PB15);
 
 void buttonConfig(){
 
-  UP_BUTTON.begin();
-  DOWN_BUTTON.begin();
-  LEFT_BUTTON.begin();
-  RIGHT_BUTTON.begin();
-
-  attachInterrupt(digitalPinToInterrupt(UP_BUTTON.pin), navButton::isr<UP_BUTTON>, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(DOWN_BUTTON.pin), navButton::isr<DOWN_BUTTON>, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(LEFT_BUTTON.pin), navButton::isr<LEFT_BUTTON>, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(RIGHT_BUTTON.pin), navButton::isr<RIGHT_BUTTON>, CHANGE);
+  UP_BUTTON.begin<UP_BUTTON>();
+  DOWN_BUTTON.begin<DOWN_BUTTON>();
+  LEFT_BUTTON.begin<LEFT_BUTTON>();
+  RIGHT_BUTTON.begin<RIGHT_BUTTON>();
 }
 // uint8_t getButtonsState() {
 //   if (!digitalRead(LEFT_BUTTON)) {

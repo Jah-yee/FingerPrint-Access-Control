@@ -19,6 +19,5 @@ void displayLogo();
 void displayWord(char* word);
 void displayTwoWords(char* word1, char* word2);
 void displayMenu();
-void clearDisplay();
 
 #endif

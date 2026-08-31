@@ -46,13 +46,10 @@ void displayMenu(){
   display.clearDisplay();
   display.setTextSize(2);               // Normal 1:1 pixel scale
   display.setTextColor(SSD1306_WHITE);  // Draw white text
+    display.setCursor(0,0);
   display.println("U - Enroll");
   display.println("D - Access");
   display.println("L - Delete");
   display.println("R - Log");
   display.display();
-}
-
-void clearDisplay(){
-  display.clearDisplay();
 }

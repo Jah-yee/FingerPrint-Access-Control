@@ -94,7 +94,6 @@ void setup() {
 
   debugln(getTime());
   debugln(getDate());
-  clearDisplay();
 }
 /*
 if no user, check if master 
@@ -103,33 +102,29 @@ figure out access, then come back to enroll
 */
 void loop() {
   // put your main code here, to run repeatedly:
-  while (mode == "menu") {
+  if (mode == "menu") {
     debugln("in menu");
     displayMenu();
-    while(1){
-      
+    delay(500);
+    while (1) {
+if (RIGHT_BUTTON.wasPressed()) {
+      mode = "log";
+      debugln("Selected: log");
+      break;
+    } else if (UP_BUTTON.wasPressed()) {
+      mode = "enroll";
+      debugln("Selected: enroll");
+      break;
+    } else if (DOWN_BUTTON.wasPressed()) {
+      mode = "access";
+      debugln("Selected: access");
+      break;
+    } else if (LEFT_BUTTON.wasPressed()) {
+      mode = "delete";
+      debugln("Selected: delete");
+      break;
     }
-    // uint8_t button = getButtonsState();
-
-    // if (button == UP) {
-    //   mode = "enroll";
-    //   break;
-    // }
-
-    // else if (button == DOWN) {
-    //   mode = "access";
-    //   break;
-    // }
-
-    // else if (button == LEFT) {
-    //   mode = "delete";
-    //   break;
-    // }
-
-    // else if (button == RIGHT) {
-    //   mode = "log";
-    //   break;
-    // }
+    }
   }
 
   while (mode == "enroll") {
@@ -204,11 +199,10 @@ void loop() {
   while (mode == "access") {
     //Serial.println("hello access");
     displayTwoWords("Place", "Finger");  // replace with finger image or animation
-    if (RIGHT_BUTTON.state == true) {
-      LEFT_BUTTON.state = false;
-      mode = "menu";
-      break;
-    }
+          if (RIGHT_BUTTON.wasPressed()) {
+        mode = "menu";
+        break;
+      }
     // uint8_t button = getButtonsState();
 
     // if (button == RIGHT) {
