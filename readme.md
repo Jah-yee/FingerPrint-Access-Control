@@ -9,8 +9,12 @@
 
 
 # Today
-work on getting user name, use a separate file an use my button class
- getting user name
+- setup automatic documentation
+- work on getting user name, use a separate file an use my button class
+- put all user functions in a separate file
+
+others
+- 
  let's take things step by step
 
 
@@ -27,3 +31,6 @@ work on getting user name, use a separate file an use my button class
 - talk about setting the internal clock, using compiled time and scanf
 - using flow charts
 - fusion 360 design for manufacturing jlc
+
+for writeup
+talk about the text input feature that accepts only four inputs

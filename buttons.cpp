@@ -19,23 +19,3 @@ void buttonConfig(){
   LEFT_BUTTON.begin<LEFT_BUTTON>();
   RIGHT_BUTTON.begin<RIGHT_BUTTON>();
 }
-// uint8_t getButtonsState() {
-//   if (!digitalRead(LEFT_BUTTON)) {
-//     return LEFT;
-//   }
-
-//   else if (!digitalRead(RIGHT_BUTTON)) {
-//     return RIGHT;
-//   } 
-  
-//   else if (!digitalRead(UP_BUTTON)){
-//     return UP;
-//   }
-//   else if(!digitalRead(DOWN_BUTTON)){
-//     return DOWN;
-//   }
-//   else {
-//     return 0;
-//   }
-//   delay(500); // play loading animation
-// }

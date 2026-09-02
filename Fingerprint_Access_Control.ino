@@ -31,7 +31,7 @@ STM32RTC &rtc = STM32RTC::getInstance();
 struct UserRecord {
   uint8_t magic;          // 1 byte
   uint8_t id;             // 1 bytes Fingerprint ID from sensor (e.g., 1 to 50) also serve as eeprom address
-  char name[5];           // 5 bytes User name (e.g., "Alex")
+  char name[5]= { '@', '@', '@', '@' };          // 5 bytes User name (e.g., "Alex")
   uint8_t notMaster = 1;  //1 byte: 0 means user is a master
 };
 
@@ -51,8 +51,9 @@ void saveUser(UserRecord &user);
 void timeConfig();
 char *getTime();
 char *getDate();
-
-
+char *getUserName();
+char name_buff[5] = { '@', '@', '@', '@' };
+int8_t cursorPos = 0;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
@@ -68,9 +69,9 @@ void setup() {
 
   pinMode(DOOR_PIN, OUTPUT);
 
-  for (int i = 27; i <= 30; i++) {
-    pinMode(i, INPUT_PULLUP);  // set all button pins as input
-  }
+  // for (int i = 27; i <= 30; i++) {
+  //   pinMode(i, INPUT_PULLUP);  // set all button pins as input
+  // }
 
   digitalWrite(DOOR_PIN, 0);  //lock the door
                               // show loading animation with my logo
@@ -144,7 +145,8 @@ if (RIGHT_BUTTON.wasPressed()) {
 
     user.id = current_id;
     // ask for name and input name
-    strncpy(user.name, "defa", sizeof(user.name) - 1);
+    getUserName(user.name);
+    //strncpy(user.name, "defa", sizeof(user.name) - 1);
     user.name[sizeof(user.name) - 1] = '\0';  // Ensure null-termination
     // user.name = writeName()
     // if no records then make the person master during enroll
@@ -364,24 +366,34 @@ char *getDate() {
   return date;
 }
 
-/*
-get button pressed
-writeNAme
-deleting and buttons next
-screens 
- enroll: should have an exit button
- access screen
- delete screen
- 
+void getUserName(char (&name)[5]){
+  while(1){
+  displayTextInput(name, cursorPos);
+  if (RIGHT_BUTTON.wasPressed()) {
+    cursorPos++;
+    if (cursorPos > 3) {
+      cursorPos = 0;
+    }
+    Serial.printf("cursor at pos: %i\n", cursorPos);
+  }
 
-icons
- lock icon
- unlock icon
- invalid fingerprint
- logo
-menu states
-- access control
-- enroll - only masters, as if person should be a master
-- remove access - only masters
-- export log - export via usb serial port
-*/
+  if (UP_BUTTON.wasPressed()) {
+    char character = name[cursorPos] + 1;
+    if (character > 90) {
+      character = '@';
+    }
+      name[cursorPos] = character;
+
+  } else if (DOWN_BUTTON.wasPressed()) {
+    char character = name[cursorPos] - 1;
+    if (character < 65) {
+      character = '@';
+    }
+      name[cursorPos] = character;
+  }
+  if(LEFT_BUTTON.wasPressed()){
+    //save
+return; 
+  }
+  }
+}

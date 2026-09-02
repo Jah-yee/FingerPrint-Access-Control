@@ -10,12 +10,17 @@
 
 struct navButton {
 private:
-  volatile bool state = false;  // 0,1,2
+  volatile bool state = false;
+  volatile uint32_t lastInterruptTime = 0;
   uint8_t pin;
   void stateCheck() {
-    state = (digitalRead(pin) == LOW);
+    uint32_t now = millis();
+    if (now - lastInterruptTime > 50) {  // 50ms debounce window
+      state = (digitalRead(pin) == LOW);
+      lastInterruptTime = now;
+    }
   }
-  
+
 public:
   //constructor
   navButton(uint8_t buttonPin)
@@ -27,20 +32,18 @@ public:
     attachInterrupt(digitalPinToInterrupt(pin), isr<ButtonInstance>, interruptMode);
   }
   bool wasPressed() {
-  if (state) {
-    state = false;
-    return true;
+    if (state) {
+      state = false;
+      return true;
+    }
+    return false;
   }
-  return false;
-}
 
   // Static ISR template wrapper
   template<navButton& ButtonInstance>
   static void isr() {
     ButtonInstance.stateCheck();
   }
-
-
 };
 extern navButton UP_BUTTON;
 extern navButton DOWN_BUTTON;
@@ -49,6 +52,5 @@ extern navButton RIGHT_BUTTON;
 
 
 void buttonConfig();
-uint8_t getButtonsState();
-
+void displayTextInput();
 #endif
