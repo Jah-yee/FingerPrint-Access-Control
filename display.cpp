@@ -85,3 +85,15 @@ void displayTextInput(char *name, int8_t cursorPos) {
     }
   display.display();
 }
+void displayOption(const char *text) {
+  display.clearDisplay();
+  display.setTextSize(2);               // Normal 1:1 pixel scale
+  display.setTextColor(SSD1306_WHITE);  // Draw white text
+  display.setCursor(20, 10);
+  display.println(text);
+  display.setCursor(0, 50);
+  display.print("<YES");
+  display.setCursor(100, 50);
+  display.print("NO>");
+  display.display();
+}

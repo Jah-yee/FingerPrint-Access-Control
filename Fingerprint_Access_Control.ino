@@ -134,14 +134,15 @@ if (RIGHT_BUTTON.wasPressed()) {
     uint8_t current_id = 1 + enrolledUsers;
     // if > 299 print no space icon
     if (current_id > MAX_USERS) {
-      Serial.println("no space for new enrollment");
+      debugln("no space for new enrollment");
+      displayTwoWords("no", "space");
       mode = "access";
-      Serial.println("access mode");
+      debugln("access mode");
       break;
     }
 
     // do enroll stuff
-    Serial.println("Ready to enroll a fingerprint!");
+    debugln("Ready to enroll a fingerprint!");
 
     user.id = current_id;
     // ask for name and input name
@@ -156,7 +157,23 @@ if (RIGHT_BUTTON.wasPressed()) {
     }
     // else ask if the person should be made master
     else {
-      Serial.println("Master?");
+      displayOption("Master??");
+      while(1){
+        char *option = choice();
+      if(option=="yes"){
+        user.notMaster=0;
+        debugf("%s is master",user.name);
+        displayTwoWords("Master", user.name);
+        delay(1000);
+        break;
+      }
+      else if(option=="no"){
+         user.notMaster=1;
+         displayTwoWords("Not", "Master");
+         delay(1000);
+         break;
+      }
+      }
     }
     while (1) {
       uint8_t success = getFingerprintEnroll(current_id);
@@ -180,22 +197,17 @@ if (RIGHT_BUTTON.wasPressed()) {
         break;
       }
       Serial.println("ENROLL AGAIN? Y/N");
-      // uint8_t button = getButtonsState();
-      // if (button == RIGHT) {
-      //   debugln("N");
-      //   break;
-      // }
-      // if (button == LEFT) {
-      //   debugln("Y");
-      //   mode = "access";
-      //   debugln("entering access mode");
-      //   break;
-      // }
+      displayOption("Again??");
+      char *option = choice();
+      if(option=="yes"){
+        break;
+      }
+      else if(option=="no"){
+        mode="access";
+        break;
+      }
     }
-    // save details to sensor and eeprom
-    //exit enrolling using left button
-    // mode="access";
-    // break;
+
   }
 
   while (mode == "access") {
@@ -205,12 +217,7 @@ if (RIGHT_BUTTON.wasPressed()) {
         mode = "menu";
         break;
       }
-    // uint8_t button = getButtonsState();
 
-    // if (button == RIGHT) {
-    //   mode = "menu";
-    //   break;
-    // }
     SensorRsp rsp = getFingerprintID();
     if (!rsp.isError) {
       debugf("user with id %s unlocked the door\n", rsp.msg);
@@ -218,61 +225,23 @@ if (RIGHT_BUTTON.wasPressed()) {
       debugf("sensor err: %s\n", rsp.msg);
     }
 
-    //debugf("%i button pressed\n", button);
-    //delay(1000);
-    // show lock icon
-    // do check
-    // if wrong show invalid fingerprint icon
-    // if correct show unlock icon and name
-    // unlock the door
-    // log it
-    // wait 5 secs
-    // lock the door
-    // if exist is pressed
   }
 
   while (mode == "delete") {
     Serial.println("hello delete");
-    // uint8_t button = getButtonsState();
 
-    // if (button == RIGHT) {
-    //   mode = "menu";
-    //   break;
-    // }
-    //int id=1;
-    // get total records
-
-    // when right button is pressed increment Id and show corresponding record
-    // when left button
-    // id cannot be less than 1
-    // id cannot be greater than number of records
-    // exit button
   }
 
   while (mode == "log") {
     Serial.println("hello log");
-    // uint8_t button = getButtonsState();
 
-    // if (button == RIGHT) {
-    //   mode = "menu";
-    //   break;
-    // }
-    // check if master if not locked the device
-    // just show log icon
-    // if cmd is get log send log, delete from mem and exit
-    // if exit is pressed break
   }
 
   while (mode == "locked") {
     Serial.println("hello locked");
-    // check if master
-    // if master, unlock door and switch to access mode
-    // else show message: not master
+
   }
-  // int up = digitalRead(PB12);    //red
-  // int down = digitalRead(PB13);  //blue
-  // Serial.printf("up button state: %i\ndown button state: %i\n", up, down);
-  // delay(500);
+
 }
 
 

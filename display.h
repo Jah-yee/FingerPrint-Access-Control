@@ -20,5 +20,6 @@ void displayWord(char* word);
 void displayTwoWords(char* word1, char* word2);
 void displayTextInput(char *name, int8_t cursorPos);
 void displayMenu();
+void displayOption(const char *text);
 
 #endif

@@ -9,9 +9,13 @@
 
 
 # Today
-- setup automatic documentation
-- work on getting user name, use a separate file an use my button class
+- finish enroll
+- let users and time have  a separte file
+- clean up code base
+- setup automatic documentation: brainstorm with gemini on the best format for documenting this project
 - put all user functions in a separate file
+- make it to keep trying to find sensor, in a loop instead of giving up
+- add text to screen
 
 others
 - 
@@ -34,3 +38,6 @@ others
 
 for writeup
 talk about the text input feature that accepts only four inputs
+
+
+add frames later with rectangles
