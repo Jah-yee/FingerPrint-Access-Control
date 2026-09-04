@@ -8,7 +8,7 @@
 STM32RTC &rtc = STM32RTC::getInstance();
 
 
-#define VALID_MAGIC 0xA5
+#define VALID_MAGIC 0xA5  // to know if a memory sector is availabe for overwriting
 
 #define DEBUG 1
 
@@ -29,10 +29,10 @@ STM32RTC &rtc = STM32RTC::getInstance();
 #define MAX_USERS 300
 
 struct UserRecord {
-  uint8_t magic;          // 1 byte
-  uint8_t id;             // 1 bytes Fingerprint ID from sensor (e.g., 1 to 50) also serve as eeprom address
-  char name[5]= { '@', '@', '@', '@' };          // 5 bytes User name (e.g., "Alex")
-  uint8_t notMaster = 1;  //1 byte: 0 means user is a master
+  uint8_t magic;                          // 1 byte
+  uint8_t id;                             // 1 bytes Fingerprint ID from sensor (e.g., 1 to 50) also serve as eeprom address
+  char name[5] = { '@', '@', '@', '@' };  // 5 bytes User name (e.g., "Alex")
+  uint8_t notMaster = 1;                  //1 byte: 0 means user is a master
 };
 
 
@@ -52,6 +52,7 @@ void timeConfig();
 char *getTime();
 char *getDate();
 char *getUserName();
+UserRecord getUser(uint16_t id);
 char name_buff[5] = { '@', '@', '@', '@' };
 int8_t cursorPos = 0;
 void setup() {
@@ -73,11 +74,9 @@ void setup() {
   //   pinMode(i, INPUT_PULLUP);  // set all button pins as input
   // }
 
-  digitalWrite(DOOR_PIN, 0);  //lock the door
+  digitalWrite(DOOR_PIN, 1);  //lock the door
                               // show loading animation with my logo
                               // play welcome sound
-
-  // adafruit finger print set up functions
   delay(100);
   biometricsSetup();
   // show lock icon
@@ -108,27 +107,28 @@ void loop() {
     displayMenu();
     delay(500);
     while (1) {
-if (RIGHT_BUTTON.wasPressed()) {
-      mode = "log";
-      debugln("Selected: log");
-      break;
-    } else if (UP_BUTTON.wasPressed()) {
-      mode = "enroll";
-      debugln("Selected: enroll");
-      break;
-    } else if (DOWN_BUTTON.wasPressed()) {
-      mode = "access";
-      debugln("Selected: access");
-      break;
-    } else if (LEFT_BUTTON.wasPressed()) {
-      mode = "delete";
-      debugln("Selected: delete");
-      break;
-    }
+      if (RIGHT_BUTTON.wasPressed()) {
+        mode = "log";
+        debugln("Selected: log");
+        break;
+      } else if (UP_BUTTON.wasPressed()) {
+        mode = "enroll";
+        debugln("Selected: enroll");
+        break;
+      } else if (DOWN_BUTTON.wasPressed()) {
+        mode = "access";
+        debugln("Selected: access");
+        break;
+      } else if (LEFT_BUTTON.wasPressed()) {
+        mode = "delete";
+        debugln("Selected: delete");
+        break;
+      }
     }
   }
 
   while (mode == "enroll") {
+
     UserRecord user;
     // get number of available records
     uint8_t current_id = 1 + enrolledUsers;
@@ -138,41 +138,67 @@ if (RIGHT_BUTTON.wasPressed()) {
       displayTwoWords("no", "space");
       mode = "access";
       debugln("access mode");
+      delay(1000);
       break;
     }
 
     // do enroll stuff
     debugln("Ready to enroll a fingerprint!");
-
-    user.id = current_id;
-    // ask for name and input name
-    getUserName(user.name);
-    //strncpy(user.name, "defa", sizeof(user.name) - 1);
-    user.name[sizeof(user.name) - 1] = '\0';  // Ensure null-termination
-    // user.name = writeName()
+   user.id = current_id;
     // if no records then make the person master during enroll
     if (!UsersExists) {
       user.notMaster = 0;  // make master
-      Serial.println("user is a master");
+      debugln("user is a master");
+   
+      // ask for name and input name
+      getUserName(user.name);
+      user.name[sizeof(user.name) - 1] = '\0';  // Ensure null-termination
     }
     // else ask if the person should be made master
+
     else {
+
+      // check if it is a master that is trying to enroll
+      while (1) {
+        display_three_words("Place", "Master", "Finger", 2);
+        SensorRsp rsp = getFingerprintID();
+        if (!rsp.isError) {
+          char *endptr;
+          // Convert base 10 string to long, then cast to int
+          uint16_t id = (uint16_t)strtol(rsp.msg, &endptr, 10);
+          UserRecord user = getUser(id);
+          if (user.notMaster == 0) {
+            displayTwoWords("Master", user.name);
+            delay(1000);
+            break;
+          } else {
+            displayTwoWords("Not", "Master");
+            delay(1000);
+          }
+        } else {
+          debugf("sensor err: %s\n", rsp.msg);
+        }
+      }
+
+          // ask for name and input name
+    getUserName(user.name);
+    user.name[sizeof(user.name) - 1] = '\0';  // Ensure null-termination
+    
       displayOption("Master??");
-      while(1){
+      while (1) {
         char *option = choice();
-      if(option=="yes"){
-        user.notMaster=0;
-        debugf("%s is master",user.name);
-        displayTwoWords("Master", user.name);
-        delay(1000);
-        break;
-      }
-      else if(option=="no"){
-         user.notMaster=1;
-         displayTwoWords("Not", "Master");
-         delay(1000);
-         break;
-      }
+        if (option == "yes") {
+          user.notMaster = 0;
+          debugf("%s is master", user.name);
+          displayTwoWords("Master", user.name);
+          delay(1000);
+          break;
+        } else if (option == "no") {
+          user.notMaster = 1;
+          displayTwoWords("Not", "Master");
+          delay(1000);
+          break;
+        }
       }
     }
     while (1) {
@@ -199,24 +225,22 @@ if (RIGHT_BUTTON.wasPressed()) {
       Serial.println("ENROLL AGAIN? Y/N");
       displayOption("Again??");
       char *option = choice();
-      if(option=="yes"){
+      if (option == "yes") {
         break;
-      }
-      else if(option=="no"){
-        mode="access";
+      } else if (option == "no") {
+        mode = "access";
         break;
       }
     }
-
   }
 
   while (mode == "access") {
     //Serial.println("hello access");
     displayTwoWords("Place", "Finger");  // replace with finger image or animation
-          if (RIGHT_BUTTON.wasPressed()) {
-        mode = "menu";
-        break;
-      }
+    if (RIGHT_BUTTON.wasPressed()) {
+      mode = "menu";
+      break;
+    }
 
     SensorRsp rsp = getFingerprintID();
     if (!rsp.isError) {
@@ -224,24 +248,19 @@ if (RIGHT_BUTTON.wasPressed()) {
     } else {
       debugf("sensor err: %s\n", rsp.msg);
     }
-
   }
 
   while (mode == "delete") {
     Serial.println("hello delete");
-
   }
 
   while (mode == "log") {
     Serial.println("hello log");
-
   }
 
   while (mode == "locked") {
     Serial.println("hello locked");
-
   }
-
 }
 
 
@@ -266,6 +285,13 @@ bool userExist(uint16_t userID, UserRecord &user) {
   // Serial.printf("userID: %i, user.id: %i\n",userID,user.id);
   // Serial.printf("user.active: %i\n",user.active);
   return (user.magic == VALID_MAGIC);  // Returns false if slot is unassigned
+}
+
+UserRecord getUser(uint16_t id) {
+  UserRecord user;
+  int addr = getEEPROMAddress(id);
+  EEPROM.get(addr, user);
+  return user;
 }
 
 int getEEPROMAddress(uint16_t userID) {
@@ -335,34 +361,34 @@ char *getDate() {
   return date;
 }
 
-void getUserName(char (&name)[5]){
-  while(1){
-  displayTextInput(name, cursorPos);
-  if (RIGHT_BUTTON.wasPressed()) {
-    cursorPos++;
-    if (cursorPos > 3) {
-      cursorPos = 0;
+void getUserName(char (&name)[5]) {
+  while (1) {
+    displayTextInput(name, cursorPos);
+    if (RIGHT_BUTTON.wasPressed()) {
+      cursorPos++;
+      if (cursorPos > 3) {
+        cursorPos = 0;
+      }
+      Serial.printf("cursor at pos: %i\n", cursorPos);
     }
-    Serial.printf("cursor at pos: %i\n", cursorPos);
-  }
 
-  if (UP_BUTTON.wasPressed()) {
-    char character = name[cursorPos] + 1;
-    if (character > 90) {
-      character = '@';
-    }
+    if (UP_BUTTON.wasPressed()) {
+      char character = name[cursorPos] + 1;
+      if (character > 90) {
+        character = '@';
+      }
       name[cursorPos] = character;
 
-  } else if (DOWN_BUTTON.wasPressed()) {
-    char character = name[cursorPos] - 1;
-    if (character < 65) {
-      character = '@';
-    }
+    } else if (DOWN_BUTTON.wasPressed()) {
+      char character = name[cursorPos] - 1;
+      if (character < 65) {
+        character = '@';
+      }
       name[cursorPos] = character;
-  }
-  if(LEFT_BUTTON.wasPressed()){
-    //save
-return; 
-  }
+    }
+    if (LEFT_BUTTON.wasPressed()) {
+      //save
+      return;
+    }
   }
 }

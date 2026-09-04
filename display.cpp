@@ -12,19 +12,10 @@ bool checkDisplay() {
   return true;
 }
 
-// void displayLogo(){
-//   display.setRotation(0);
-//   display.clearDisplay();
-//   display.display();
-
-//   display.clearDisplay();
-//   display.drawBitmap(0, 0, kriitor, 100, 100, SSD1306_WHITE);
-//   display.display();
-// }
 
 void displayTwoWords(char* word1, char* word2) {
   display.clearDisplay();
-  display.setTextSize(3);               // Normal 1:1 pixel scale
+  display.setTextSize(2.5);               // Normal 1:1 pixel scale
   display.setTextColor(SSD1306_WHITE);  // Draw white text
   display.setCursor(0,10);  
   display.println(word1);   
@@ -35,7 +26,7 @@ void displayTwoWords(char* word1, char* word2) {
 
 void displayWord(char* word){
     display.clearDisplay();
-  display.setTextSize(3);               // Normal 1:1 pixel scale
+  display.setTextSize(2.5);               // Normal 1:1 pixel scale
   display.setTextColor(SSD1306_WHITE);  // Draw white text
   display.setCursor(30,30);  
   display.println(word);   
@@ -54,37 +45,66 @@ void displayMenu(){
   display.display();
 }
 
+void drawFrame(char *title, uint8_t xTitlePos, uint8_t yTitlePos, const char *optionR, const char *optionL) {
+
+  const int16_t lineY = 15;
+  display.drawLine(0, lineY, 128, lineY, SSD1306_WHITE);
+  display.setTextSize(2);
+  display.setCursor(xTitlePos, yTitlePos);
+  display.print(title);
+  display.setTextSize(1);
+  display.setCursor(0, 55);
+  display.print(optionR);
+  display.setCursor(100, 50);
+  display.print(optionL);
+}
+
 void displayTextInput(char *name, int8_t cursorPos) {
   display.clearDisplay();
-  display.setTextSize(3);               // Normal 1:1 pixel scale
-  display.setTextColor(SSD1306_WHITE);  // Draw white text
-  display.setCursor(0, 20);
-  display.print(name[0]);
-    if(cursorPos==0){
-    display.setCursor(0, 50);
-    display.print("*");
-    }
+  const int16_t yPointerPos = 40;
+  const int16_t yNamePos = 20;
 
-  display.setCursor(30, 20);
+  const int16_t xName0Pos =0;
+  const int16_t xName1Pos=30;
+  const int16_t xName2Pos=60;
+  const int16_t xName3Pos=90;
+  drawFrame("Enter Name", 0, 0, "", "");
+  display.setTextSize(2);               // Normal 1:1 pixel scale
+  display.setTextColor(SSD1306_WHITE);  // Draw white text
+  display.setCursor(xName0Pos, yNamePos);
+  display.print(name[0]);
+  if (cursorPos == 0) {
+    display.setTextSize(1);
+    display.setCursor(xName0Pos, yPointerPos);
+    display.print("*");
+  }
+  display.setTextSize(2);
+  display.setCursor(xName1Pos, yNamePos);
   display.print(name[1]);
-      if(cursorPos==1){
-    display.setCursor(30, 50);
+  if (cursorPos == 1) {
+    display.setTextSize(1);
+    display.setCursor(xName1Pos, yPointerPos);
     display.print("*");
-    }
-  display.setCursor(60, 20);
+  }
+  display.setTextSize(2);
+  display.setCursor(xName2Pos, yNamePos);
   display.print(name[2]);
-        if(cursorPos==2){
-    display.setCursor(60, 50);
+  if (cursorPos == 2) {
+    display.setTextSize(1);
+    display.setCursor(xName2Pos, yPointerPos);
     display.print("*");
-    }
-  display.setCursor(90, 20);
+  }
+  display.setTextSize(2);
+  display.setCursor(xName3Pos, yNamePos);
   display.print(name[3]);
-        if(cursorPos==3){
-    display.setCursor(90, 50);
+  if (cursorPos == 3) {
+    display.setTextSize(1);
+    display.setCursor(xName3Pos, yPointerPos);
     display.print("*");
-    }
+  }
   display.display();
 }
+
 void displayOption(const char *text) {
   display.clearDisplay();
   display.setTextSize(2);               // Normal 1:1 pixel scale
@@ -96,4 +116,18 @@ void displayOption(const char *text) {
   display.setCursor(100, 50);
   display.print("NO>");
   display.display();
+}
+
+void display_three_words(String text1, String text2, String text3, int size) {
+  display.clearDisplay();
+  display.setTextSize(size);               // Normal 1:1 pixel scale
+  display.setTextColor(SSD1306_WHITE);  // Draw white text
+  display.setCursor(0, 0);
+  display.println(text1);
+  display.setCursor(40, 25);
+  display.println(text2);
+  display.setCursor(0, 50);
+  display.println(text3);
+  display.display();
+ 
 }

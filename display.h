@@ -21,5 +21,6 @@ void displayTwoWords(char* word1, char* word2);
 void displayTextInput(char *name, int8_t cursorPos);
 void displayMenu();
 void displayOption(const char *text);
+void display_three_words(String text1, String text2, String text3,int size);
 
 #endif

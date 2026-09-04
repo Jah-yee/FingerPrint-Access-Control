@@ -16,6 +16,7 @@
 - put all user functions in a separate file
 - make it to keep trying to find sensor, in a loop instead of giving up
 - add text to screen
+- change fonts
 
 others
 - 
