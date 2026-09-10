@@ -12,45 +12,20 @@ bool checkDisplay() {
   return true;
 }
 
-
-void displayTwoWords(char* word1, char* word2) {
-  display.clearDisplay();
-  display.setTextSize(2.5);               // Normal 1:1 pixel scale
-  display.setTextColor(SSD1306_WHITE);  // Draw white text
-  display.setCursor(0,10);  
-  display.println(word1);   
-  display.setCursor(0,40);  
-  display.println(word2);
-  display.display();
-}
-
-void displayWord(char* word){
-    display.clearDisplay();
-  display.setTextSize(2.5);               // Normal 1:1 pixel scale
-  display.setTextColor(SSD1306_WHITE);  // Draw white text
-  display.setCursor(30,30);  
-  display.println(word);   
-  display.display();
-}
-
-void displayMenu(){
-  display.clearDisplay();
-  display.setTextSize(2);               // Normal 1:1 pixel scale
-  display.setTextColor(SSD1306_WHITE);  // Draw white text
-    display.setCursor(0,0);
-  display.println("U - Enroll");
-  display.println("D - Access");
-  display.println("L - Delete");
-  display.println("R - Log");
-  display.display();
-}
-
 void drawFrame(char *title, uint8_t xTitlePos, uint8_t yTitlePos, const char *optionR, const char *optionL) {
-
+  //display.drawRect(0, 0, 128, 64, SSD1306_WHITE);
   const int16_t lineY = 15;
   display.drawLine(0, lineY, 128, lineY, SSD1306_WHITE);
   display.setTextSize(2);
-  display.setCursor(xTitlePos, yTitlePos);
+  //center text
+  int16_t x1, y1;
+  uint16_t width, height;
+  display.getTextBounds(title, 0, 0, &x1, &y1, &width, &height);
+  int x = ((SCREEN_WIDTH - width) / 2);
+  int y = ((SCREEN_HEIGHT - height) / 2);
+
+  display.setCursor(x, yTitlePos);
+  //display.setCursor(xTitlePos, yTitlePos);
   display.print(title);
   display.setTextSize(1);
   display.setCursor(0, 55);
@@ -59,16 +34,52 @@ void drawFrame(char *title, uint8_t xTitlePos, uint8_t yTitlePos, const char *op
   display.print(optionL);
 }
 
+void displayTwoWords(char *word1, char *word2, char *frameTitle, char *optionR, char *optionL) {
+  display.clearDisplay();
+  drawFrame(frameTitle, 0, 0, optionR, optionL);
+  display.setTextWrap(0);
+  display.setTextSize(2);               // Normal 1:1 pixel scale
+  display.setTextColor(SSD1306_WHITE);  // Draw white text
+  display.setCursor(0, 20);
+  display.println(word1);
+  display.setCursor(50, 40);
+  display.println(word2);
+  display.display();
+}
+
+void displayWord(char *word, char *frameTitle, char *optionR, char *optionL) {
+  display.clearDisplay();
+  drawFrame(frameTitle, 0, 0, optionR, optionL);
+  display.setTextSize(2);               // Normal 1:1 pixel scale
+  display.setTextColor(SSD1306_WHITE);  // Draw white text
+  display.setCursor(30, 30);
+  display.println(word);
+  display.display();
+}
+
+void displayMenu() {
+  display.clearDisplay();
+  display.setTextSize(2);               // Normal 1:1 pixel scale
+  display.setTextColor(SSD1306_WHITE);  // Draw white text
+  display.setCursor(0, 0);
+  display.println("U - Enroll");
+  display.println("D - Access");
+  display.println("L - Delete");
+  display.println("R - Log");
+  display.display();
+}
+
+
 void displayTextInput(char *name, int8_t cursorPos) {
   display.clearDisplay();
   const int16_t yPointerPos = 40;
   const int16_t yNamePos = 20;
 
-  const int16_t xName0Pos =0;
-  const int16_t xName1Pos=30;
-  const int16_t xName2Pos=60;
-  const int16_t xName3Pos=90;
-  drawFrame("Enter Name", 0, 0, "", "");
+  const int16_t xName0Pos = 0;
+  const int16_t xName1Pos = 30;
+  const int16_t xName2Pos = 60;
+  const int16_t xName3Pos = 90;
+  drawFrame("Enter Name", 0, 0, "", "save");
   display.setTextSize(2);               // Normal 1:1 pixel scale
   display.setTextColor(SSD1306_WHITE);  // Draw white text
   display.setCursor(xName0Pos, yNamePos);
