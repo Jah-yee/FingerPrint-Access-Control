@@ -16,8 +16,8 @@ extern Adafruit_SSD1306 display;
 
 bool checkDisplay();
 void displayLogo();
-void displayWord(char *word,char *frameTitle, char* optionR="", char* optionL="");
-void displayTwoWords(char *word1, char *word2, char *frameTitle, char* optionR="", char* optionL="");
+void displayWord(char *word,const char *frameTitle, const char* optionR="", const char* optionL="");
+void displayTwoWords(char *word1, char *word2, const char *frameTitle, const char* optionR="", const char* optionL="");
 void displayTextInput(char *name, int8_t cursorPos);
 void displayOption(const char *text);
 void display_three_words(String text1, String text2, String text3, int size);

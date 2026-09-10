@@ -12,7 +12,7 @@ bool checkDisplay() {
   return true;
 }
 
-void drawFrame(char *title, uint8_t xTitlePos, uint8_t yTitlePos, const char *optionR, const char *optionL) {
+void drawFrame(const char *title, uint8_t xTitlePos, uint8_t yTitlePos, const char *optionR, const char *optionL) {
   //display.drawRect(0, 0, 128, 64, SSD1306_WHITE);
   const int16_t lineY = 15;
   display.drawLine(0, lineY, 128, lineY, SSD1306_WHITE);
@@ -34,7 +34,7 @@ void drawFrame(char *title, uint8_t xTitlePos, uint8_t yTitlePos, const char *op
   display.print(optionL);
 }
 
-void displayTwoWords(char *word1, char *word2, char *frameTitle, char *optionR, char *optionL) {
+void displayTwoWords(char *word1, char *word2, const char *frameTitle, const char *optionR, const char *optionL) {
   display.clearDisplay();
   drawFrame(frameTitle, 0, 0, optionR, optionL);
   display.setTextWrap(0);
@@ -47,7 +47,7 @@ void displayTwoWords(char *word1, char *word2, char *frameTitle, char *optionR, 
   display.display();
 }
 
-void displayWord(char *word, char *frameTitle, char *optionR, char *optionL) {
+void displayWord(char *word, const char *frameTitle, const char *optionR, const char *optionL) {
   display.clearDisplay();
   drawFrame(frameTitle, 0, 0, optionR, optionL);
   display.setTextSize(2);               // Normal 1:1 pixel scale

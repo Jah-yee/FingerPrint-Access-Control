@@ -1,12 +1,8 @@
 // tell them to be cleaning the sensor
 #include "biometrics.h"
 #include "buttons.h"
-#include <STM32RTC.h>
 #include "users.h"
-
-/* Get the rtc object */
-STM32RTC &rtc = STM32RTC::getInstance();
-
+#include "myTime.h"
 
 #define DEBUG 1
 
@@ -26,17 +22,11 @@ STM32RTC &rtc = STM32RTC::getInstance();
 
 
 
-//const char modes[4] = {"access","enroll","delete","log"};
-
-const char *EnrollModeHeader = EnrollModeHeader;
+const char *EnrollModeHeader = "EnrollModeHeader";
 char *mode = "access";   // start with access control mode
 bool doorLocked = true;  // door is locked initially.
 bool UsersExists = false;
 int enrolledUsers = 0;
-
-void timeConfig();
-char *getTime();
-char *getDate();
 
 bool exit();
 
@@ -171,8 +161,9 @@ void loop() {
             delay(1000);
           }
         } else {
-          displayTwoWords("No", "Match", EnrollModeHeader)
+          displayTwoWords("No", "Match", EnrollModeHeader);
           debugf("sensor err: %s\n", rsp.msg);
+          delay(1000);
         }
       }
 
@@ -254,56 +245,6 @@ void loop() {
     if (exit()) { break; }
     Serial.println("hello locked");
   }
-}
-
-
-
-void timeConfig() {
-  // Select RTC clock source: LSI_CLOCK, LSE_CLOCK or HSE_CLOCK.
-  // By default the LSI is selected as source.
-  rtc.setClockSource(STM32RTC::LSE_CLOCK);  // LSE is more accurate for clock based functions
-  rtc.begin();                              // initialize RTC 24H format
-  if (!rtc.isTimeSet()) {
-    Serial.println("time is not set, setting time");
-    byte hours, minutes, seconds;
-    sscanf(__TIME__, "%d:%d:%d", &hours, &minutes, &seconds);
-
-    //  Parse __DATE__ string (Format: "Mmm DD YYYY", e.g., "Aug 14 2026")
-    char monthStr[4];
-    int day, year;
-    sscanf(__DATE__, "%s %d %d", monthStr, &day, &year);
-
-    // Convert 3-letter month to a number (1-12)
-    int month = 1;
-    const char *months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
-    for (int i = 0; i < 12; i++) {
-      if (strcmp(monthStr, months[i]) == 0) {
-        month = i + 1;
-        break;
-      }
-    }
-
-    // Convert 4-digit year to 2-digit year for the RTC library
-    int shortYear = year % 100;
-
-    // 3. Update the RTC
-    rtc.setTime(hours, minutes, seconds);
-    rtc.setDate(5, day, month, shortYear);  // Day of week defaults to 1 here
-  }
-  Serial.println("time has been set");
-}
-
-char *getTime() {
-  static char time[6];
-  snprintf(time, sizeof(time), "%02d:%02d", rtc.getHours(), rtc.getMinutes());
-  return time;
-}
-
-char *getDate() {
-  static char date[9];
-  snprintf(date, sizeof(date), "%02d/%02d/%02d", rtc.getDay(), rtc.getMonth(), rtc.getYear());
-  return date;
 }
 
 
