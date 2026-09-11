@@ -22,7 +22,8 @@
 
 
 
-const char *EnrollModeHeader = "EnrollModeHeader";
+const char *EnrollModeHeader = "Enroll Mode";
+const char *AccessModeHeader = "Access Mode";
 char *mode = "access";   // start with access control mode
 bool doorLocked = true;  // door is locked initially.
 bool UsersExists = false;
@@ -37,19 +38,13 @@ void setup() {
   buttonConfig();
   while (!checkDisplay())
     ;
-  //displayLogo();
   delay(5000);
 
   Serial.println("starting");
 
 
   pinMode(DOOR_PIN, OUTPUT);
-
-  // for (int i = 27; i <= 30; i++) {
-  //   pinMode(i, INPUT_PULLUP);  // set all button pins as input
-  // }
-
-  digitalWrite(DOOR_PIN, 1);  //lock the door
+lockDoor();
                               // show loading animation with my logo
                               // play welcome sound
   delay(100);
@@ -101,16 +96,16 @@ void loop() {
       }
     }
   }
-/////////////////////////////////////// Enroll Mode //////////////////////////////////
+  /////////////////////////////////////// Enroll Mode //////////////////////////////////
   while (mode == "enroll") {
     if (exit()) { break; }  // a function to allow user to exit this menu
     UserRecord user;
     // get number of available records
-    uint8_t current_id = 1 + enrolledUsers;
+    uint16_t current_id = 1 + enrolledUsers;
     // if > 299 print no space icon
     if (current_id > MAX_USERS) {
       debugln("no space for new enrollment");
-      displayTwoWords("no", "space",EnrollModeHeader);
+      displayTwoWords("no", "space", EnrollModeHeader);
       mode = "menu";
       debugln(mode);
       delay(1000);
@@ -148,7 +143,7 @@ void loop() {
           uint16_t id = (uint16_t)strtol(rsp.msg, &endptr, 10);
           UserRecord master = getUser(id);
           if (master.notMaster == 0) {
-            displayTwoWords("Master", user.name,EnrollModeHeader);
+            displayTwoWords("Master", user.name, EnrollModeHeader);
             delay(1000);
 
             // ask for new user's name and input name
@@ -157,7 +152,7 @@ void loop() {
 
             break;
           } else {
-            displayTwoWords("Not", "Master",EnrollModeHeader);
+            displayTwoWords("Not", "Master", EnrollModeHeader);
             delay(1000);
           }
         } else {
@@ -179,7 +174,7 @@ void loop() {
           break;
         } else if (option == "no") {
           user.notMaster = 1;
-          displayTwoWords("Not", "Master",EnrollModeHeader);
+          displayTwoWords("Not", "Master", EnrollModeHeader);
           delay(1000);
           break;
         }
@@ -196,7 +191,7 @@ void loop() {
         enrolledUsers++;
         Serial.println("saved");
         break;
-      } 
+      }
       debugln("failed to enroll");
       delay(2000);  // replace with millis() later
     }
@@ -218,19 +213,31 @@ void loop() {
     }
   }
 
-/////////////////////////////////////// Access Mode //////////////////////////////////
-  while (mode == "access") {
-    if (exit()) { break; }               // a function to allow user to exit this menu
-    displayTwoWords("Place", "Finger","Access Mode");  // replace with finger image or animation
-
-    SensorRsp rsp = getFingerprintID();
-    if (!rsp.isError) {
-      debugf("user with id %s unlocked the door\n", rsp.msg);
-    } else {
-      debugf("sensor err: %s\n", rsp.msg);
+  /////////////////////////////////////// Access Mode //////////////////////////////////
+  if (mode == "access") {
+    while (1) {
+      if (exit()) { break; }                                 // a function to allow user to exit this menu
+      displayTwoWords("Place", "Finger", AccessModeHeader);  // replace with finger image or animation
+      SensorRsp rsp = getFingerprintID();
+      if (!rsp.isError) {
+        debugf("user with id %s unlocked the door\n", rsp.msg);
+        char *endptr;
+        // Convert base 10 string to long, then cast to int
+        uint16_t id = (uint16_t)strtol(rsp.msg, &endptr, 10);
+        UserRecord user = getUser(id);
+        displayTwoWords("Welcome", user.name, AccessModeHeader);
+        unlockDoor();
+        delay(5000);
+        lockDoor();
+      } else {
+        debugf("sensor err: %s\n", rsp.msg);
+        if (rsp.msg == "no match") {
+          displayWord("Invalid", AccessModeHeader);
+          delay(1000);
+        }
+      }
     }
   }
-
   while (mode == "delete") {
     if (exit()) { break; }
     Serial.println("hello delete");
@@ -254,4 +261,12 @@ bool exit() {
     mode = "menu";
   }
   return buttonState;
+}
+
+void lockDoor(){
+  digitalWrite(DOOR_PIN, 0);  //lock the door
+}
+
+void unlockDoor(){
+  digitalWrite(DOOR_PIN, 1);  //lock the door
 }
