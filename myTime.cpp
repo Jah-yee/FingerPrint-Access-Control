@@ -56,3 +56,9 @@ char *getDate() {
   snprintf(date, sizeof(date), "%02d/%02d/%02d", rtc.getDay(), rtc.getMonth(), rtc.getYear());
   return date;
 }
+
+void setManualDateTime(uint8_t day, uint8_t month, uint8_t year, uint8_t hours, uint8_t minutes) {
+  rtc.setTime(hours, minutes, 0);
+  rtc.setDate(day, month, year);
+  Serial.printf("Manual RTC set: %02d/%02d/%02d %02d:%02d:00\n", day, month, year, hours, minutes);
+}

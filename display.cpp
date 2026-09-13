@@ -55,15 +55,21 @@ void displayWord(const char *word,const char *frameTitle, const char* optionR,co
   display.display();
 }
 
-void displayMenu() {
+void displayMenu(uint8_t page) {
   display.clearDisplay();
   display.setTextSize(2);               // Normal 1:1 pixel scale
   display.setTextColor(SSD1306_WHITE);  // Draw white text
   display.setCursor(0, 0);
-  display.println("U - Enroll");
-  display.println("D - Access");
-  display.println("L - Delete");
-  display.println("R - Log");
+  if (page == 1) {
+    display.println("U - Enroll");
+    display.println("D - Access");
+    display.println("L - Delete");
+    display.println("R - Next >");
+  } else {
+    display.println("U - Log");
+    display.println("D - Set Time");
+    display.println("R - < Back");
+  }
   display.display();
 }
 
@@ -169,6 +175,49 @@ void displayLogEntry(const char *name, const char *date, const char *time, int i
   display.print(date);
   display.print(" ");
   display.print(time);
+
+  display.display();
+}
+
+void displayTimeInput(uint8_t day, uint8_t month, uint8_t year, uint8_t hours, uint8_t minutes, uint8_t fieldPos) {
+  display.clearDisplay();
+  drawFrame("Set Time", "", "save");
+
+  // Format Time string
+  char timeStr[6];
+  snprintf(timeStr, sizeof(timeStr), "%02d:%02d", hours, minutes);
+
+  // Format Date string
+  char dateStr[11];
+  snprintf(dateStr, sizeof(dateStr), "%02d/%02d/20%02d", day, month, year);
+
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(20, 20);
+  display.print(timeStr);
+
+  display.setTextSize(1);
+  display.setCursor(20, 42);
+  display.print(dateStr);
+
+  // Draw cursor pointer (*) under active field
+  display.setTextSize(1);
+  if (fieldPos == 0) {       // Hours
+    display.setCursor(20, 36);
+    display.print("^");
+  } else if (fieldPos == 1) { // Minutes
+    display.setCursor(56, 36);
+    display.print("^");
+  } else if (fieldPos == 2) { // Day
+    display.setCursor(20, 52);
+    display.print("^");
+  } else if (fieldPos == 3) { // Month
+    display.setCursor(38, 52);
+    display.print("^");
+  } else if (fieldPos == 4) { // Year
+    display.setCursor(68, 52);
+    display.print("^");
+  }
 
   display.display();
 }

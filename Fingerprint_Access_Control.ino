@@ -26,6 +26,7 @@ const char *DeleteModeHeader = "Delete Mode";
 const char *LogModeHeader    = "Log Mode";
 
 char *mode = "access";   // start with access control mode
+uint8_t menuPage = 1;    // main menu page (1 or 2)
 bool doorLocked = true;  // door is locked initially.
 bool UsersExists = false;
 
@@ -68,26 +69,42 @@ void setup() {
 void loop() {
   //checked
   if (mode == "menu") {
-    debugln("in menu");
-    displayMenu();
+    debugf("in menu (page %d)\n", menuPage);
+    displayMenu(menuPage);
     delay(300);
     while (mode == "menu") {
-      if (RIGHT_BUTTON.wasPressed()) {
-        mode = "log";
-        debugln("Selected: log");
-        break;
-      } else if (UP_BUTTON.wasPressed()) {
-        mode = "enroll";
-        debugln("Selected: enroll");
-        break;
-      } else if (DOWN_BUTTON.wasPressed()) {
-        mode = "access";
-        debugln("Selected: access");
-        break;
-      } else if (LEFT_BUTTON.wasPressed()) {
-        mode = "delete";
-        debugln("Selected: delete");
-        break;
+      if (menuPage == 1) {
+        if (RIGHT_BUTTON.wasPressed()) {
+          menuPage = 2;
+          debugln("Switched to Menu Page 2");
+          break;
+        } else if (UP_BUTTON.wasPressed()) {
+          mode = "enroll";
+          debugln("Selected: enroll");
+          break;
+        } else if (DOWN_BUTTON.wasPressed()) {
+          mode = "access";
+          debugln("Selected: access");
+          break;
+        } else if (LEFT_BUTTON.wasPressed()) {
+          mode = "delete";
+          debugln("Selected: delete");
+          break;
+        }
+      } else { // menuPage == 2
+        if (RIGHT_BUTTON.wasPressed()) {
+          menuPage = 1;
+          debugln("Switched back to Menu Page 1");
+          break;
+        } else if (UP_BUTTON.wasPressed()) {
+          mode = "log";
+          debugln("Selected: log");
+          break;
+        } else if (DOWN_BUTTON.wasPressed()) {
+          mode = "settime";
+          debugln("Selected: settime");
+          break;
+        }
       }
     }
   }
@@ -317,6 +334,64 @@ void loop() {
         } else if (DOWN_BUTTON.wasPressed()) {
           currentLogIdx = (currentLogIdx - 1 + totalLogs) % totalLogs;
         }
+      }
+    }
+  }
+
+  /////////////////////////////////////// Set Time Mode //////////////////////////////////
+  if (mode == "settime") {
+    if (!verifyMasterPermission("Set Time")) {
+      mode = "menu";
+    }
+
+    uint8_t hours = 12;
+    uint8_t minutes = 0;
+    uint8_t day = 1;
+    uint8_t month = 1;
+    uint8_t year = 26;
+
+    // Parse current time & date
+    int hVal = 0, mVal = 0, dVal = 1, monVal = 1, yVal = 26;
+    if (sscanf(getTime(), "%d:%d", &hVal, &mVal) == 2) {
+      hours = (uint8_t)hVal;
+      minutes = (uint8_t)mVal;
+    }
+    if (sscanf(getDate(), "%d/%d/%d", &dVal, &monVal, &yVal) == 3) {
+      day = (uint8_t)dVal;
+      month = (uint8_t)monVal;
+      year = (uint8_t)yVal;
+    }
+
+    uint8_t fieldPos = 0; // 0=Hours, 1=Minutes, 2=Day, 3=Month, 4=Year
+
+    while (mode == "settime") {
+      displayTimeInput(day, month, year, hours, minutes, fieldPos);
+
+      if (RIGHT_BUTTON.wasPressed()) {
+        fieldPos = (fieldPos + 1) % 5;
+        debugf("Time input active field: %d\n", fieldPos);
+      }
+
+      if (UP_BUTTON.wasPressed()) {
+        if (fieldPos == 0)      hours = (hours + 1) % 24;
+        else if (fieldPos == 1) minutes = (minutes + 1) % 60;
+        else if (fieldPos == 2) day = (day % 31) + 1;
+        else if (fieldPos == 3) month = (month % 12) + 1;
+        else if (fieldPos == 4) year = (year + 1) % 100;
+      } else if (DOWN_BUTTON.wasPressed()) {
+        if (fieldPos == 0)      hours = (hours == 0) ? 23 : hours - 1;
+        else if (fieldPos == 1) minutes = (minutes == 0) ? 59 : minutes - 1;
+        else if (fieldPos == 2) day = (day <= 1) ? 31 : day - 1;
+        else if (fieldPos == 3) month = (month <= 1) ? 12 : month - 1;
+        else if (fieldPos == 4) year = (year == 0) ? 99 : year - 1;
+      }
+
+      if (LEFT_BUTTON.wasPressed()) {
+        setManualDateTime(day, month, year, hours, minutes);
+        displayTwoWords("Time", "Set", "Set Time");
+        delay(1500);
+        mode = "menu";
+        break;
       }
     }
   }
