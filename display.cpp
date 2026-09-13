@@ -1,5 +1,4 @@
 #include <Arduino.h>
-//#include "icons.h"
 #include "display.h"
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -12,7 +11,7 @@ bool checkDisplay() {
   return true;
 }
 
-void drawFrame(const char *title, uint8_t xTitlePos, uint8_t yTitlePos, const char *optionR, const char *optionL) {
+void drawFrame(const char *title, const char *optionR="", const char *optionL="") {
   //display.drawRect(0, 0, 128, 64, SSD1306_WHITE);
   const int16_t lineY = 15;
   display.drawLine(0, lineY, 128, lineY, SSD1306_WHITE);
@@ -23,9 +22,8 @@ void drawFrame(const char *title, uint8_t xTitlePos, uint8_t yTitlePos, const ch
   display.getTextBounds(title, 0, 0, &x1, &y1, &width, &height);
   int x = ((SCREEN_WIDTH - width) / 2);
   int y = ((SCREEN_HEIGHT - height) / 2);
-
-  display.setCursor(x, yTitlePos);
-  //display.setCursor(xTitlePos, yTitlePos);
+  display.setCursor(x, 0);
+  display.setTextWrap(false);
   display.print(title);
   display.setTextSize(1);
   display.setCursor(0, 55);
@@ -34,9 +32,9 @@ void drawFrame(const char *title, uint8_t xTitlePos, uint8_t yTitlePos, const ch
   display.print(optionL);
 }
 
-void displayTwoWords(char *word1, char *word2, const char *frameTitle, const char *optionR, const char *optionL) {
+void displayTwoWords(const char *word1, const char *word2, const char *frameTitle, const char* optionR, const char* optionL) {
   display.clearDisplay();
-  drawFrame(frameTitle, 0, 0, optionR, optionL);
+  drawFrame(frameTitle, optionR, optionL);
   display.setTextWrap(0);
   display.setTextSize(2);               // Normal 1:1 pixel scale
   display.setTextColor(SSD1306_WHITE);  // Draw white text
@@ -47,9 +45,9 @@ void displayTwoWords(char *word1, char *word2, const char *frameTitle, const cha
   display.display();
 }
 
-void displayWord(char *word, const char *frameTitle, const char *optionR, const char *optionL) {
+void displayWord(const char *word,const char *frameTitle, const char* optionR,const char* optionL) {
   display.clearDisplay();
-  drawFrame(frameTitle, 0, 0, optionR, optionL);
+  drawFrame(frameTitle, optionR, optionL);
   display.setTextSize(2);               // Normal 1:1 pixel scale
   display.setTextColor(SSD1306_WHITE);  // Draw white text
   display.setCursor(30, 30);
@@ -79,7 +77,7 @@ void displayTextInput(char *name, int8_t cursorPos) {
   const int16_t xName1Pos = 30;
   const int16_t xName2Pos = 60;
   const int16_t xName3Pos = 90;
-  drawFrame("Enter Name", 0, 0, "", "save");
+  drawFrame("Enter Name", "<YES", "NO>");
   display.setTextSize(2);               // Normal 1:1 pixel scale
   display.setTextColor(SSD1306_WHITE);  // Draw white text
   display.setCursor(xName0Pos, yNamePos);
@@ -116,20 +114,32 @@ void displayTextInput(char *name, int8_t cursorPos) {
   display.display();
 }
 
-void displayOption(const char *text) {
+void displayOption(const char *text, const char* optionR, const char* optionL) {
   display.clearDisplay();
   display.setTextSize(2);               // Normal 1:1 pixel scale
   display.setTextColor(SSD1306_WHITE);  // Draw white text
   display.setCursor(20, 10);
   display.println(text);
   display.setCursor(0, 50);
-  display.print("<YES");
+  display.print(optionL);
   display.setCursor(100, 50);
-  display.print("NO>");
+  display.print(optionR);
   display.display();
 }
 
-void display_three_words(String text1, String text2, String text3, int size) {
+void displayCustomMenu(const char *title, const char *option1, const char *option2) {
+  display.clearDisplay();
+  drawFrame(title);
+  display.setTextSize(2);               // Normal 1:1 pixel scale
+  display.setTextColor(SSD1306_WHITE);  // Draw white text
+  display.setCursor(0, 25);
+  display.println(option1);
+  display.setCursor(0, 49);
+  display.println(option2);
+  display.display();
+}
+
+void display_three_words(const char* text1, const char* text2, const char* text3, int size) {
   display.clearDisplay();
   display.setTextSize(size);               // Normal 1:1 pixel scale
   display.setTextColor(SSD1306_WHITE);  // Draw white text

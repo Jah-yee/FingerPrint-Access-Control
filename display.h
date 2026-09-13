@@ -15,12 +15,11 @@
 extern Adafruit_SSD1306 display;
 
 bool checkDisplay();
-void displayLogo();
-void displayWord(char *word,const char *frameTitle, const char* optionR="", const char* optionL="");
-void displayTwoWords(char *word1, char *word2, const char *frameTitle, const char* optionR="", const char* optionL="");
+void displayWord(const char *word,const char *frameTitle, const char* optionR="",const char* optionL="");
+void displayTwoWords(const char *word1, const char *word2, const char *frameTitle, const char* optionR="", const char* optionL="");
 void displayTextInput(char *name, int8_t cursorPos);
-void displayOption(const char *text);
-void display_three_words(String text1, String text2, String text3, int size);
+void displayOption(const char *text, const char* optionR="NO>", const char* optionL="<YES");
+void displayCustomMenu(const char *title, const char *option1, const char *option2);
 void displayMenu();
-
+void display_three_words(const char* text1, const char* text2, const char* text3, int size);
 #endif

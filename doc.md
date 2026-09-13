@@ -10,7 +10,9 @@
 
 # Today
 - work on delete feature
-
+- delete is not working well
+- in delete mode display, exit is cut off
+- can't delete if there are no users
 
 others
 - 

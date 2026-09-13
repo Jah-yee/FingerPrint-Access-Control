@@ -24,10 +24,11 @@
 
 const char *EnrollModeHeader = "Enroll Mode";
 const char *AccessModeHeader = "Access Mode";
+const char *DeleteModeHeader= "Delete Mode";
 char *mode = "access";   // start with access control mode
 bool doorLocked = true;  // door is locked initially.
 bool UsersExists = false;
-int enrolledUsers = 0;
+
 
 bool exit();
 
@@ -42,15 +43,15 @@ void setup() {
 
   Serial.println("starting");
 
-
   pinMode(DOOR_PIN, OUTPUT);
-lockDoor();
-                              // show loading animation with my logo
-                              // play welcome sound
+  lockDoor();
+  // show loading animation with my logo
+  // play welcome sound
   delay(100);
   biometricsSetup();
   // show lock icon
-
+// deleteAll();
+// deleteAllPrints();
   // check if any user exist
   // if yes set mode to enroll
   enrolledUsers = getEnrolledCount();
@@ -156,9 +157,11 @@ void loop() {
             delay(1000);
           }
         } else {
-          displayTwoWords("No", "Match", EnrollModeHeader);
           debugf("sensor err: %s\n", rsp.msg);
-          delay(1000);
+          if (rsp.msg == "no match") {
+            displayTwoWords("No", "Match", EnrollModeHeader);
+            delay(1000);
+          }
         }
       }
 
@@ -238,9 +241,58 @@ void loop() {
       }
     }
   }
-  while (mode == "delete") {
-    if (exit()) { break; }
-    Serial.println("hello delete");
+
+
+  if (mode == "delete") {
+    // scroll mode
+    // text input
+    UserRecord user;
+    int16_t startID = 1;
+    while (1) {
+      if (exit()) { break; }
+      displayCustomMenu("Query Opt", "U-Scroll", "D-Name");
+      if (UP_BUTTON.wasPressed()) {
+        debugln("Scroll mode");
+        //////////////// Scroll Mode ////////////////////
+        // the user navigates through all users sequentialy
+        while (1) {
+          if (exit()) { break; }
+          user = getUser(startID);
+          char buffer[9];
+          snprintf(buffer, sizeof(buffer), "Del %s", user.name);
+          const char *name = buffer;
+          displayOption(name, "exit>");
+
+          if (UP_BUTTON.wasPressed()) {
+            debugf("enrolled users: %i\n",enrolledUsers);
+            if (enrolledUsers < startID){
+              startID = enrolledUsers;
+              debugln("user limit exceeded");
+            }
+            startID++;
+          }
+
+          else if (DOWN_BUTTON.wasPressed() ) {
+            debugf("enrolled users: %i",enrolledUsers);
+            if (startID < 1){
+              startID=0;
+            }
+            startID--;
+          } else if (LEFT_BUTTON.wasPressed()) {
+            // this button is selected, yes. Yes as in delete the user
+            deleteFingerprint(user.id);
+            deleteUser(user);
+            displayTwoWords(user.name, "deltd", DeleteModeHeader);
+            delay(1000);
+          }
+        }
+      } else if (DOWN_BUTTON.wasPressed()) {
+
+        while (1) {
+          if (exit()) { break; }
+        }
+      }
+    }
   }
 
   while (mode == "log") {
@@ -256,17 +308,17 @@ void loop() {
 
 
 bool exit() {
-  bool buttonState = LEFT_BUTTON.wasPressed();
+  bool buttonState = RIGHT_BUTTON.wasPressed();
   if (buttonState) {
     mode = "menu";
   }
   return buttonState;
 }
 
-void lockDoor(){
+void lockDoor() {
   digitalWrite(DOOR_PIN, 0);  //lock the door
 }
 
-void unlockDoor(){
+void unlockDoor() {
   digitalWrite(DOOR_PIN, 1);  //lock the door
 }

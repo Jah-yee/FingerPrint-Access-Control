@@ -8,8 +8,8 @@
 
 navButton UP_BUTTON(PB12);
 navButton DOWN_BUTTON(PB13);
-navButton LEFT_BUTTON(PB14);
-navButton RIGHT_BUTTON(PB15);
+navButton LEFT_BUTTON(PB15);
+navButton RIGHT_BUTTON(PB14);
 
 
 void buttonConfig() {
