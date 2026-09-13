@@ -260,6 +260,12 @@ void loop() {
           } else if (DOWN_BUTTON.wasPressed()) {
             currentIndex = (currentIndex - 1 + activeCount) % activeCount;
           } else if (LEFT_BUTTON.wasPressed()) {
+            if (user.notMaster == 0 && getMasterCount() <= 1) {
+              debugln("Blocked deletion of sole Master user.");
+              displayTwoWords("Cant't", "Delete", DeleteModeHeader);
+              delay(1500);
+              continue;
+            }
             deleteFingerprint(user.id);
             deleteUser(user);
             displayTwoWords(user.name, "deltd", DeleteModeHeader);
@@ -289,6 +295,12 @@ void loop() {
           UserRecord u;
           if (userExist(i, u)) {
             if (strncmp(u.name, targetName, 4) == 0) {
+              if (u.notMaster == 0 && getMasterCount() <= 1) {
+                debugln("Blocked deletion of sole Master user during name search.");
+                displayTwoWords("Can'r", "Delete", DeleteModeHeader);
+                delay(1500);
+                continue;
+              }
               deleteFingerprint(u.id);
               deleteUser(u);
               deletedCount++;

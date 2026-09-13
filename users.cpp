@@ -66,6 +66,17 @@ uint16_t getNextAvailableID() {
   return 0; // No space available
 }
 
+int getMasterCount() {
+  int count = 0;
+  UserRecord u;
+  for (uint16_t id = 1; id <= MAX_USERS; id++) {
+    if (userExist(id, u) && u.notMaster == 0) {
+      count++;
+    }
+  }
+  return count;
+}
+
 void deleteUser(UserRecord &user) {
   int addr = getEEPROMAddress(user.id);
   user.magic = 0; // mark slot as unassigned/deleted

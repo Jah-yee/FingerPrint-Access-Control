@@ -10,13 +10,20 @@
 
 ## 📌 Executive Summary
 
-The **Fingerprint Access Control System** has been fully completed, refactored, and verified for the **STM32F4 Blackpill F411CE** board target. All requested features—including Master Privilege Abstraction, Delete Mode (Scroll & Name options), Persistent RTC Audit Logging Mode, and a Two-Page Main Menu with Manual RTC Time & Date Input—have been implemented with clear feedback on the 128x64 OLED display and serial debug outputs (`DEBUG_PRINT`).
+The **Fingerprint Access Control System** has been fully completed, refactored, and verified for the **STM32F4 Blackpill F411CE** board target. All requested features—including Master Privilege Abstraction, Delete Mode (Scroll & Name options), Persistent RTC Audit Logging Mode, Two-Page Main Menu with Manual RTC Time/Date Input, and the **Sole Master Protection Rule**—have been implemented with clear feedback on the 128x64 OLED display and serial debug outputs (`DEBUG_PRINT`).
 
 ---
 
 ## 🚀 Summary of New Changes & Architectural Enhancements
 
-### 1. Abstracted Master Authorization Gate (`verifyMasterPermission`)
+### 1. Sole Master Protection Rule
+- **Implementation**: Created `int getMasterCount()` in `users.h` / `users.cpp` to count active enrolled users with `notMaster == 0`.
+- **Safety Enforcement**:
+  - In both **Scroll Mode** and **Name Search Mode**, before deleting any user record, the system checks if `user.notMaster == 0` AND `getMasterCount() <= 1`.
+  - If the user being deleted is the sole remaining Master in the system, deletion is blocked.
+  - Displays `"Sole", "Master"` on the OLED display for 1.5 seconds and aborts deletion to prevent administrative lockouts.
+
+### 2. Abstracted Master Authorization Gate (`verifyMasterPermission`)
 - **Implementation**: Created `bool verifyMasterPermission(const char *modeHeader)` in `Fingerprint_Access_Control.ino`.
 - **Functionality**:
   - Automatically checks if any users exist in EEPROM (`enrolledUsers == 0`). On cold boot with zero users, master check is bypassed to allow setup of user #1 as Master.
@@ -24,7 +31,7 @@ The **Fingerprint Access Control System** has been fully completed, refactored, 
   - Provides instant OLED visual feedback (`"Master <Name>"` vs `"Not Master"` / `"No Match"`) and debug log output.
   - Allows clean cancellation via the `RIGHT` navigation button.
 
-### 2. Two-Page Main Menu Structure
+### 3. Two-Page Main Menu Structure
 - **Page 1**:
   - `U - Enroll`
   - `D - Access`
@@ -35,7 +42,7 @@ The **Fingerprint Access Control System** has been fully completed, refactored, 
   - `D - Set Time` (Master Protected)
   - `R - < Back` (Returns to Page 1)
 
-### 3. Manual RTC Time & Date Selector Widget
+### 4. Manual RTC Time & Date Selector Widget
 - **Master Protected**: Guarded by `verifyMasterPermission("Set Time")`.
 - **Interactive UI (`displayTimeInput`)**:
   - Displays formatted time `[HH:MM]` and date `[DD/MM/20YY]` on the OLED display.
@@ -44,29 +51,27 @@ The **Fingerprint Access Control System** has been fully completed, refactored, 
   - `UP_BUTTON` / `DOWN_BUTTON`: Increments / decrements the selected field with boundary wrapping.
   - `LEFT_BUTTON`: Saves new timestamp directly to the hardware RTC (`setManualDateTime`) and returns to the menu.
 
-### 4. Complete Delete Mode (Scroll & Name Options)
+### 5. Complete Delete Mode (Scroll & Name Options)
 - **Submenu Selection**: Prompts the user with `Query Opt: U-Scroll / D-Name`.
 - **Option 1: Scroll Mode (`UP_BUTTON`)**:
   - Dynamically populates a list of active enrolled user IDs.
   - Allows sequential navigation through users using `UP` and `DOWN` buttons.
   - OLED displays delete prompt: `Del <Name>` with `<DEL` (LEFT) and `exit>` (RIGHT).
-  - Pressing `LEFT` deletes the biometric template from AS608 DSP Flash (`deleteFingerprint`), invalidates the EEPROM slot (`deleteUser`), and refreshes the active list.
+  - Pressing `LEFT` checks Sole Master rule, deletes biometric template from AS608 DSP Flash (`deleteFingerprint`), invalidates EEPROM slot (`deleteUser`), and refreshes list.
 - **Option 2: Name Search Mode (`DOWN_BUTTON`)**:
   - Prompts 4-character name entry via `getUserName()`.
   - As requested, 3-letter names are appended with `@` (e.g., `"BOB@"`), matching the 4-character stored format.
-  - Searches all enrolled EEPROM records and deletes any matching user records and biometric DSP templates.
-  - Displays `"BOB@ deltd"` or `"Not Found"` on the OLED display.
+  - Searches all enrolled EEPROM records, enforces Sole Master protection, and deletes matching user records and biometric DSP templates.
 
-### 5. Persistent RTC Audit Logging & Log Mode
+### 6. Persistent RTC Audit Logging & Log Mode
 - **Persistent EEPROM Storage (`logger.h` / `logger.cpp`)**:
-  - Implemented a 20-record circular log buffer stored in EEPROM starting at address `3000` (after max user storage space). Logs persist across hardware power cycles.
+  - Implemented a 20-record circular log buffer stored in EEPROM starting at address `3000`. Logs persist across hardware power cycles.
   - Each `LogRecord` stores user name, RTC timestamp (`HH:MM`), and RTC date (`DD/MM/YY`).
 - **Automatic Access Logging**:
   - In **Access Mode**, successful door unlocks log `user.name`.
 - **Log Mode Viewer**:
   - Protected by Master privilege check.
   - Displays formatted log records on the OLED display (`displayLogEntry`): `Log X/Y`, `<Name>`, `DD/MM/YY HH:MM`.
-  - Uses `UP` and `DOWN` buttons to iterate logs (newest to oldest), with `RIGHT` button exiting to menu.
 
 ---
 
@@ -90,7 +95,7 @@ USBDevice            1.0.0   C:\Users\DELL\AppData\Local\Arduino15\packages\STMi
 Used platform            Version Path                                                                          
 STMicroelectronics:stm32 3.0.0   C:\Users\DELL\AppData\Local\Arduino15\packages\STMicroelectronics\hardware\stm32\3.0.0
 
-Sketch uses 68,336 bytes (13%) of program storage space. Maximum is 524,288 bytes.
+Sketch uses 68,480 bytes (13%) of program storage space. Maximum is 524,288 bytes.
 Global variables use 5,744 bytes (4%) of dynamic memory, leaving 125,328 bytes for local variables. Maximum is 131,072 bytes.
 
 Compilation Status: 0 Errors, 0 Warnings
