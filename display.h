@@ -22,4 +22,5 @@ void displayOption(const char *text, const char* optionR="NO>", const char* opti
 void displayCustomMenu(const char *title, const char *option1, const char *option2);
 void displayMenu();
 void display_three_words(const char* text1, const char* text2, const char* text3, int size);
+void displayLogEntry(const char *name, const char *date, const char *time, int index, int total);
 #endif

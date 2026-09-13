@@ -1,20 +1,25 @@
 #include <Arduino.h>
 #include <STM32RTC.h>
 #include "myTime.h"
+
 /* Get the rtc object */
 STM32RTC &rtc = STM32RTC::getInstance();
 
 void timeConfig() {
-  // Select RTC clock source: LSI_CLOCK, LSE_CLOCK or HSE_CLOCK.
-  // By default the LSI is selected as source.
-  rtc.setClockSource(STM32RTC::LSE_CLOCK);  // LSE is more accurate for clock based functions
+  // Select RTC clock source if available, or default via begin()
+#if defined(LSE_CLOCK)
+  rtc.setClockSource(STM32RTC::LSE_CLOCK);
+#elif defined(LSI_CLOCK)
+  rtc.setClockSource(STM32RTC::LSI_CLOCK);
+#endif
   rtc.begin();                              // initialize RTC 24H format
+
   if (!rtc.isTimeSet()) {
     Serial.println("time is not set, setting time");
     byte hours, minutes, seconds;
     sscanf(__TIME__, "%d:%d:%d", &hours, &minutes, &seconds);
 
-    //  Parse __DATE__ string (Format: "Mmm DD YYYY", e.g., "Aug 14 2026")
+    // Parse __DATE__ string (Format: "Mmm DD YYYY", e.g., "Aug 14 2026")
     char monthStr[4];
     int day, year;
     sscanf(__DATE__, "%s %d %d", monthStr, &day, &year);
@@ -33,9 +38,9 @@ void timeConfig() {
     // Convert 4-digit year to 2-digit year for the RTC library
     int shortYear = year % 100;
 
-    // 3. Update the RTC
+    // Update the RTC (day, month, year)
     rtc.setTime(hours, minutes, seconds);
-    rtc.setDate(5, day, month, shortYear);  // Day of week defaults to 1 here
+    rtc.setDate(day, month, shortYear);
   }
   Serial.println("time has been set");
 }

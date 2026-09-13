@@ -56,17 +56,24 @@ void saveUser(UserRecord &user) {
   Serial.println(addr);
 }
 
-void deleteUser(UserRecord &user){
-user.magic = 0; // this will mark that area in memory as overwritten
-saveUser(user); // funny enough we still have to save, so as to update user.magic in memory
-/*
-due to the sequential nature of saving users with incremental id, anytime deletion occurs 
-there would be a gap in memory. To resolve this, we will update that gap with the latest
-user
-*/ 
-UserRecord latestUser = getUser(enrolledUsers);
-latestUser.id=user.id;
-saveUser(latestUser);
+uint16_t getNextAvailableID() {
+  UserRecord u;
+  for (uint16_t id = 1; id <= MAX_USERS; id++) {
+    if (!userExist(id, u)) {
+      return id;
+    }
+  }
+  return 0; // No space available
+}
+
+void deleteUser(UserRecord &user) {
+  int addr = getEEPROMAddress(user.id);
+  user.magic = 0; // mark slot as unassigned/deleted
+  EEPROM.put(addr, user); // Directly write invalidated record
+  if (enrolledUsers > 0) {
+    enrolledUsers--;
+  }
+  debugf("Deleted user %s (ID %d) at EEPROM addr %d. Enrolled count now %d\n", user.name, user.id, addr, enrolledUsers);
 }
 
 void deleteAll(){
@@ -87,22 +94,22 @@ void getUserName(char (&name)[5]) {
       if (cursorPos > 3) {
         cursorPos = 0;
       }
-      Serial.printf("cursor at pos: %i\n", cursorPos);
+      debugf("cursor at pos: %i\n", cursorPos);
     }
 
     if (UP_BUTTON.wasPressed()) {
-      char character = name[cursorPos] + 1;
-      if (character > 90) {
+      int character = (unsigned char)name[cursorPos] + 1;
+      if (character > 'Z') {
         character = '@';
       }
-      name[cursorPos] = character;
+      name[cursorPos] = (char)character;
 
     } else if (DOWN_BUTTON.wasPressed()) {
-      char character = name[cursorPos] - 1;
-      if (character < 65) {
+      int character = (unsigned char)name[cursorPos] - 1;
+      if (character < 'A') {
         character = '@';
       }
-      name[cursorPos] = character;
+      name[cursorPos] = (char)character;
     }
     if (LEFT_BUTTON.wasPressed()) {
       //save

@@ -12,7 +12,7 @@ private:
   uint8_t pin;
   void stateCheck() {
     uint32_t now = millis();
-    if (now - lastInterruptTime > 100) {  // 50ms debounce window
+    if (now - lastInterruptTime > 10) {  // 50ms debounce window
       state = (digitalRead(pin) == LOW);
       lastInterruptTime = now;
     }
@@ -24,9 +24,9 @@ public:
     : pin(buttonPin){};
 
   template<navButton& ButtonInstance>
-  void begin(uint8_t mode = INPUT_PULLUP, PinStatus interruptMode = CHANGE) {
+  void begin(uint8_t mode = INPUT_PULLUP, uint32_t interruptMode = CHANGE) {
     pinMode(pin, mode);
-    attachInterrupt(digitalPinToInterrupt(pin), isr<ButtonInstance>, interruptMode);
+    attachInterrupt(digitalPinToInterrupt(pin), isr<ButtonInstance>, (PinStatus)interruptMode);
   }
   bool wasPressed() {
     if (state) {

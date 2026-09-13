@@ -21,6 +21,7 @@ int getEEPROMAddress(uint16_t userID);
 void saveUser(UserRecord &user);
 bool userExist(uint16_t userID, UserRecord &user);
 UserRecord getUser(uint16_t id);
+uint16_t getNextAvailableID();
 void deleteUser(UserRecord &user);
 void deleteAll();
 #endif

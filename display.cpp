@@ -27,9 +27,9 @@ void drawFrame(const char *title, const char *optionR="", const char *optionL=""
   display.print(title);
   display.setTextSize(1);
   display.setCursor(0, 55);
-  display.print(optionR);
-  display.setCursor(100, 50);
   display.print(optionL);
+  display.setCursor(100, 50);
+  display.print(optionR);
 }
 
 void displayTwoWords(const char *word1, const char *word2, const char *frameTitle, const char* optionR, const char* optionL) {
@@ -77,7 +77,7 @@ void displayTextInput(char *name, int8_t cursorPos) {
   const int16_t xName1Pos = 30;
   const int16_t xName2Pos = 60;
   const int16_t xName3Pos = 90;
-  drawFrame("Enter Name", "<YES", "NO>");
+  drawFrame("Enter Name", "", "save");
   display.setTextSize(2);               // Normal 1:1 pixel scale
   display.setTextColor(SSD1306_WHITE);  // Draw white text
   display.setCursor(xName0Pos, yNamePos);
@@ -150,5 +150,25 @@ void display_three_words(const char* text1, const char* text2, const char* text3
   display.setCursor(0, 50);
   display.println(text3);
   display.display();
- 
+}
+
+void displayLogEntry(const char *name, const char *date, const char *time, int index, int total) {
+  display.clearDisplay();
+  char titleBuf[16];
+  snprintf(titleBuf, sizeof(titleBuf), "Log %d/%d", index, total);
+  drawFrame(titleBuf, "exit>", "");
+  
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 20);
+  display.print(name);
+  display.setCursor(65, 20);
+
+  display.setTextSize(1);
+  display.setCursor(0, 42);
+  display.print(date);
+  display.print(" ");
+  display.print(time);
+
+  display.display();
 }

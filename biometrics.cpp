@@ -225,7 +225,7 @@ uint8_t getFingerprintEnroll(uint8_t id) {
     return p;
   }
 
-  return true;
+  return FINGERPRINT_OK;
 }
 
 SensorRsp getFingerprintID() {
