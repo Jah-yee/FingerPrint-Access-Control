@@ -1,0 +1,33 @@
+# Custom files specified to ignore
+doc.md
+*.ps1
+ps.1
+*.yaml
+*.yml
+
+# Arduino / C++ Build Artifacts & Temporary Files
+build/
+*.elf
+*.hex
+*.bin
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+
+# IDE & Code Editor Configurations
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# Agent / Environment Files
+.agent/
