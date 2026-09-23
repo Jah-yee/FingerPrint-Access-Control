@@ -9,8 +9,10 @@ void timeConfig() {
   // Select RTC clock source if available, or default via begin()
 #if defined(LSE_CLOCK)
   rtc.setClockSource(STM32RTC::LSE_CLOCK);
+  debugln("LSE CLOCK IS BEEN USED");
 #elif defined(LSI_CLOCK)
   rtc.setClockSource(STM32RTC::LSI_CLOCK);
+  debugln("LSI CLOCK IS BEEN USED");
 #endif
   rtc.begin();                              // initialize RTC 24H format
 

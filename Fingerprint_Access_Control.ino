@@ -29,6 +29,7 @@ void setup() {
   Serial.begin(115200);
   audioInit(SPEAKER_PIN);
   audioStartup();
+  debugln("starting time config");
   timeConfig();
   buttonConfig();
   loggerInit();
