@@ -1,5 +1,5 @@
 #pragma once
-
+#include <Button.h>
 #ifndef BUTTONS_H
 #define BUTTONS_H
 
@@ -42,10 +42,10 @@ public:
     ButtonInstance.stateCheck();
   }
 };
-extern navButton UP_BUTTON;
-extern navButton DOWN_BUTTON;
-extern navButton LEFT_BUTTON;
-extern navButton RIGHT_BUTTON;
+extern Button UP_BUTTON;
+extern Button DOWN_BUTTON;
+extern Button LEFT_BUTTON;
+extern Button RIGHT_BUTTON;
 
 
 void buttonConfig();

@@ -4,21 +4,11 @@
 #include "users.h"
 #include "myTime.h"
 #include "logger.h"
-
-#define DEBUG 1
-
-#if DEBUG == 1
-#define debug(x) Serial.print(x)
-#define debugln(x) Serial.println(x)
-#define debugf(...) Serial.printf(__VA_ARGS__)
-#else
-#define debug(x)
-#define debugln(x)
-#define debugf(...)
-#endif
+#include "audio.h"
+#include "debugMacro.h"
 
 #define SPEAKER_PIN PA15
-#define DOOR_PIN PC13
+#define DOOR_PIN PA4
 
 const char *EnrollModeHeader = "Enroll Mode";
 const char *AccessModeHeader = "Access Mode";
@@ -37,6 +27,8 @@ bool verifyMasterPermission(const char *modeHeader);
 
 void setup() {
   Serial.begin(115200);
+  audioInit(SPEAKER_PIN);
+  audioStartup();
   timeConfig();
   buttonConfig();
   loggerInit();
@@ -74,33 +66,40 @@ void loop() {
     delay(300);
     while (mode == "menu") {
       if (menuPage == 1) {
-        if (RIGHT_BUTTON.wasPressed()) {
+        if (RIGHT_BUTTON.pressed()) {
+          audioBeep();
           menuPage = 2;
           debugln("Switched to Menu Page 2");
           break;
-        } else if (UP_BUTTON.wasPressed()) {
+        } else if (UP_BUTTON.pressed()) {
+          audioBeep();
           mode = "enroll";
           debugln("Selected: enroll");
           break;
-        } else if (DOWN_BUTTON.wasPressed()) {
+        } else if (DOWN_BUTTON.pressed()) {
+          audioBeep();
           mode = "access";
           debugln("Selected: access");
           break;
-        } else if (LEFT_BUTTON.wasPressed()) {
+        } else if (LEFT_BUTTON.pressed()) {
+          audioBeep();
           mode = "delete";
           debugln("Selected: delete");
           break;
         }
       } else { // menuPage == 2
-        if (RIGHT_BUTTON.wasPressed()) {
+        if (RIGHT_BUTTON.pressed()) {
+          audioBeep();
           menuPage = 1;
           debugln("Switched back to Menu Page 1");
           break;
-        } else if (UP_BUTTON.wasPressed()) {
+        } else if (UP_BUTTON.pressed()) {
+          audioBeep();
           mode = "log";
           debugln("Selected: log");
           break;
-        } else if (DOWN_BUTTON.wasPressed()) {
+        } else if (DOWN_BUTTON.pressed()) {
+          audioBeep();
           mode = "settime";
           debugln("Selected: settime");
           break;
@@ -121,6 +120,7 @@ void loop() {
       uint16_t current_id = getNextAvailableID();
       if (current_id == 0 || current_id > MAX_USERS) {
         debugln("no space for new enrollment");
+        audioWarning();
         displayTwoWords("no", "space", EnrollModeHeader);
         mode = "menu";
         delay(1500);
@@ -199,14 +199,17 @@ void loop() {
         char *endptr;
         uint16_t id = (uint16_t)strtol(rsp.msg, &endptr, 10);
         UserRecord user = getUser(id);
+        audioAccessGranted();
         displayTwoWords("Welcome", user.name, AccessModeHeader);
-        logAccess(user.name, true);// log only successful entry
         unlockDoor();
         delay(4000);
         lockDoor();
+        displayWord("Logging",AccessModeHeader);
+        logAccess(user.name, true);// log only successful entry
       } else {
         debugf("sensor err: %s\n", rsp.msg);
         if (strcmp(rsp.msg, "no match") == 0) {
+          audioAccessDenied();
           displayWord("Invalid", AccessModeHeader);
           delay(1000);
         }
@@ -224,9 +227,11 @@ void loop() {
       if (exit()) { break; }
       displayCustomMenu("Query Opt", "U-Scroll", "D-Name");
       
-      if (UP_BUTTON.wasPressed()) {
+      if (UP_BUTTON.pressed()) {
+        audioBeep();
         debugln("Scroll mode selected");
         if (enrolledUsers == 0) {
+          audioWarning();
           displayTwoWords("No", "Users", DeleteModeHeader);
           delay(1500);
           continue;
@@ -255,19 +260,24 @@ void loop() {
           snprintf(buffer, sizeof(buffer), "Del %s", user.name);
           displayOption(buffer, "exit>", "<DEL");
 
-          if (UP_BUTTON.wasPressed()) {
+          if (UP_BUTTON.pressed()) {
+            audioBeep();
             currentIndex = (currentIndex + 1) % activeCount;
-          } else if (DOWN_BUTTON.wasPressed()) {
+          } else if (DOWN_BUTTON.pressed()) {
+            audioBeep();
             currentIndex = (currentIndex - 1 + activeCount) % activeCount;
-          } else if (LEFT_BUTTON.wasPressed()) {
+          } else if (LEFT_BUTTON.pressed()) {
+            audioBeep();
             if (user.notMaster == 0 && getMasterCount() <= 1) {
               debugln("Blocked deletion of sole Master user.");
+              audioWarning();
               displayTwoWords("Cant't", "Delete", DeleteModeHeader);
               delay(1500);
               continue;
             }
             deleteFingerprint(user.id);
             deleteUser(user);
+            audioDelete();
             displayTwoWords(user.name, "deltd", DeleteModeHeader);
             delay(1500);
 
@@ -284,7 +294,8 @@ void loop() {
             }
           }
         }
-      } else if (DOWN_BUTTON.wasPressed()) {
+      } else if (DOWN_BUTTON.pressed()) {
+        audioBeep();
         debugln("Name search delete selected");
         char targetName[5] = {'@', '@', '@', '@', '\0'};
         getUserName(targetName);
@@ -297,6 +308,7 @@ void loop() {
             if (strncmp(u.name, targetName, 4) == 0) {
               if (u.notMaster == 0 && getMasterCount() <= 1) {
                 debugln("Blocked deletion of sole Master user during name search.");
+                audioWarning();
                 displayTwoWords("Can'r", "Delete", DeleteModeHeader);
                 delay(1500);
                 continue;
@@ -309,9 +321,11 @@ void loop() {
         }
 
         if (deletedCount > 0) {
+          audioDelete();
           displayTwoWords(targetName, "deltd", DeleteModeHeader);
           delay(1500);
         } else {
+          audioAccessDenied();
           displayTwoWords("Not", "Found", DeleteModeHeader);
           delay(1500);
         }
@@ -329,6 +343,7 @@ void loop() {
       if (exit()) { break; }
       int totalLogs = getLogCount();
       if (totalLogs == 0) {
+        audioWarning();
         displayTwoWords("No", "Logs", LogModeHeader);
         delay(1500);
         mode = "menu";
@@ -341,9 +356,11 @@ void loop() {
         LogRecord rec = getLog(currentLogIdx);
         displayLogEntry(rec.name, rec.date, rec.time, currentLogIdx + 1, totalLogs);
 
-        if (UP_BUTTON.wasPressed()) {
+        if (UP_BUTTON.pressed()) {
+          audioBeep();
           currentLogIdx = (currentLogIdx + 1) % totalLogs;
-        } else if (DOWN_BUTTON.wasPressed()) {
+        } else if (DOWN_BUTTON.pressed()) {
+          audioBeep();
           currentLogIdx = (currentLogIdx - 1 + totalLogs) % totalLogs;
         }
       }
@@ -379,18 +396,21 @@ void loop() {
     while (mode == "settime") {
       displayTimeInput(day, month, year, hours, minutes, fieldPos);
 
-      if (RIGHT_BUTTON.wasPressed()) {
+      if (RIGHT_BUTTON.pressed()) {
+        audioBeep();
         fieldPos = (fieldPos + 1) % 5;
         debugf("Time input active field: %d\n", fieldPos);
       }
 
-      if (UP_BUTTON.wasPressed()) {
+      if (UP_BUTTON.pressed()) {
+        audioBeep();
         if (fieldPos == 0)      hours = (hours + 1) % 24;
         else if (fieldPos == 1) minutes = (minutes + 1) % 60;
         else if (fieldPos == 2) day = (day % 31) + 1;
         else if (fieldPos == 3) month = (month % 12) + 1;
         else if (fieldPos == 4) year = (year + 1) % 100;
-      } else if (DOWN_BUTTON.wasPressed()) {
+      } else if (DOWN_BUTTON.pressed()) {
+        audioBeep();
         if (fieldPos == 0)      hours = (hours == 0) ? 23 : hours - 1;
         else if (fieldPos == 1) minutes = (minutes == 0) ? 59 : minutes - 1;
         else if (fieldPos == 2) day = (day <= 1) ? 31 : day - 1;
@@ -398,7 +418,8 @@ void loop() {
         else if (fieldPos == 4) year = (year == 0) ? 99 : year - 1;
       }
 
-      if (LEFT_BUTTON.wasPressed()) {
+      if (LEFT_BUTTON.pressed()) {
+        audioAccessGranted();
         setManualDateTime(day, month, year, hours, minutes);
         displayTwoWords("Time", "Set", "Set Time");
         delay(1500);
@@ -430,11 +451,13 @@ bool verifyMasterPermission(const char *modeHeader) {
       UserRecord master = getUser(id);
       if (master.notMaster == 0) {
         debugf("Master verified: %s\n", master.name);
+        audioAccessGranted();
         displayTwoWords("Master", master.name, modeHeader);
         delay(1000);
         return true;
       } else {
         debugln("Scanned user is not a Master.");
+        audioAccessDenied();
         displayTwoWords("Not", "Master", modeHeader);
         delay(1000);
         display_three_words("Place", "Master", "Finger", 2);
@@ -442,6 +465,7 @@ bool verifyMasterPermission(const char *modeHeader) {
     } else {
       if (strcmp(rsp.msg, "no match") == 0) {
         debugln("No match found for Master verification.");
+        audioAccessDenied();
         displayTwoWords("No", "Match", modeHeader);
         delay(1000);
         display_three_words("Place", "Master", "Finger", 2);
@@ -452,8 +476,9 @@ bool verifyMasterPermission(const char *modeHeader) {
 }
 
 bool exit() {
-  bool buttonState = RIGHT_BUTTON.wasPressed();
+  bool buttonState = RIGHT_BUTTON.pressed();
   if (buttonState) {
+    audioBeep();
     mode = "menu";
   }
   return buttonState;
@@ -465,4 +490,4 @@ void lockDoor() {
 
 void unlockDoor() {
   digitalWrite(DOOR_PIN, 1);  // unlock the door
-}
+}

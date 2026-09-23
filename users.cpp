@@ -1,8 +1,9 @@
-#include "api/Common.h"
+#include <Arduino.h>
 #include <EEPROM.h>
 #include "buttons.h"
 #include "users.h"
 #include "display.h"
+#include "audio.h"
 #include "debugMacro.h"
 
 int8_t cursorPos = 0;
@@ -100,7 +101,8 @@ void deleteAll(){
 void getUserName(char (&name)[5]) {
   while (1) {
     displayTextInput(name, cursorPos);
-    if (RIGHT_BUTTON.wasPressed()) {
+    if (RIGHT_BUTTON.pressed()) {
+      audioBeep();
       cursorPos++;
       if (cursorPos > 3) {
         cursorPos = 0;
@@ -108,21 +110,24 @@ void getUserName(char (&name)[5]) {
       debugf("cursor at pos: %i\n", cursorPos);
     }
 
-    if (UP_BUTTON.wasPressed()) {
+    if (UP_BUTTON.pressed()) {
+      audioBeep();
       int character = (unsigned char)name[cursorPos] + 1;
       if (character > 'Z') {
         character = '@';
       }
       name[cursorPos] = (char)character;
 
-    } else if (DOWN_BUTTON.wasPressed()) {
+    } else if (DOWN_BUTTON.pressed()) {
+      audioBeep();
       int character = (unsigned char)name[cursorPos] - 1;
       if (character < 'A') {
         character = '@';
       }
       name[cursorPos] = (char)character;
     }
-    if (LEFT_BUTTON.wasPressed()) {
+    if (LEFT_BUTTON.pressed()) {
+      audioBeep();
       //save
       return;
     }

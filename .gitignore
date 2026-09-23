@@ -4,6 +4,7 @@ doc.md
 ps.1
 *.yaml
 *.yml
+PROJECT_WRITEUP.md
 
 # Arduino / C++ Build Artifacts & Temporary Files
 build/

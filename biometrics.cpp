@@ -2,6 +2,7 @@
 #include <Adafruit_Fingerprint.h>
 #include "buttons.h"
 #include "biometrics.h"
+#include "audio.h"
 
 //#define DEBUG 1
 #include "debugMacro.h"
@@ -71,6 +72,7 @@ uint8_t getFingerprintEnroll(uint8_t id) {
     p = finger.getImage();
     switch (p) {
       case FINGERPRINT_OK:
+        audioEnrollStep();
         debugln("Image taken");
         break;
       case FINGERPRINT_NOFINGER:
@@ -96,22 +98,27 @@ uint8_t getFingerprintEnroll(uint8_t id) {
       debugln("Image converted");
       break;
     case FINGERPRINT_IMAGEMESS:
+      audioEnrollError();
       debugln("Image too messy");
       displayTwoWords("too", "messy","Finger Enroll");
       return p;
     case FINGERPRINT_PACKETRECIEVEERR:
+      audioEnrollError();
       debugln("Communication error");
       displayWord("error","Finger Enroll");  // replace with icon
       return p;
     case FINGERPRINT_FEATUREFAIL:
+      audioEnrollError();
       debugln("Could not find fingerprint features");
       displayWord("error","Finger Enroll");  // replace with icon
       return p;
     case FINGERPRINT_INVALIDIMAGE:
+      audioEnrollError();
       debugln("Could not find fingerprint features");
       displayWord("error","Finger Enroll");  // replace with icon
       return p;
     default:
+      audioEnrollError();
       debugln("Unknown error");
       displayWord("error","Finger Enroll");  // replace with icon
       return p;
@@ -133,6 +140,7 @@ uint8_t getFingerprintEnroll(uint8_t id) {
     p = finger.getImage();
     switch (p) {
       case FINGERPRINT_OK:
+        audioEnrollStep();
         debugln("Image taken");
         break;
       case FINGERPRINT_NOFINGER:
@@ -158,22 +166,27 @@ uint8_t getFingerprintEnroll(uint8_t id) {
       debugln("Image converted");
       break;
     case FINGERPRINT_IMAGEMESS:
+      audioEnrollError();
       debugln("Image too messy");
       displayTwoWords("clean", "fing","Finger Enroll");
       return p;
     case FINGERPRINT_PACKETRECIEVEERR:
+      audioEnrollError();
       debugln("Communication error");
       displayWord("error","Finger Enroll");
       return p;
     case FINGERPRINT_FEATUREFAIL:
+      audioEnrollError();
       debugln("Could not find fingerprint features");
       displayWord("error","Finger Enroll");
       return p;
     case FINGERPRINT_INVALIDIMAGE:
+      audioEnrollError();
       debugln("Could not find fingerprint features");
       displayWord("error","Finger Enroll");
       return p;
     default:
+      audioEnrollError();
       debugln("Unknown error");
       displayWord("error","Finger Enroll");
       return p;
@@ -188,14 +201,17 @@ uint8_t getFingerprintEnroll(uint8_t id) {
     debugln("Prints matched!");
     displayTwoWords("PRINTS", "MATCHED","Finger Enroll");
   } else if (p == FINGERPRINT_PACKETRECIEVEERR) {
+    audioEnrollError();
     debugln("Communication error");
     displayTwoWords("COMMS", "ERROR","Finger Enroll");
     return p;
   } else if (p == FINGERPRINT_ENROLLMISMATCH) {
+    audioEnrollError();
     debugln("Fingerprints did not match");
     displayTwoWords("NO", "MATCH","Finger Enroll");
     return p;
   } else {
+    audioEnrollError();
     debugln("Unknown error");
     displayWord("Error","Finger Enroll");
     return p;
@@ -205,21 +221,26 @@ uint8_t getFingerprintEnroll(uint8_t id) {
   debugln(id);
   p = finger.storeModel(id);
   if (p == FINGERPRINT_OK) {
+    audioEnrollSuccess();
     debugln("Stored!");
     displayWord("Saved","Finger Enroll");
   } else if (p == FINGERPRINT_PACKETRECIEVEERR) {
+    audioEnrollError();
     debugln("Communication error");
     displayWord("Error","Finger Enroll");
     return p;
   } else if (p == FINGERPRINT_BADLOCATION) {
+    audioEnrollError();
     debugln("Could not store in that location");
     displayWord("Error","Finger Enroll");
     return p;
   } else if (p == FINGERPRINT_FLASHERR) {
+    audioEnrollError();
     debugln("Error writing to flash");
     displayWord("Error","Finger Enroll");
     return p;
   } else {
+    audioEnrollError();
     debugln("Unknown error");
     displayWord("Error","Finger Enroll");
     return p;
