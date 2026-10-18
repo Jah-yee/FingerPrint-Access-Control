@@ -1,6 +1,15 @@
 # STM32 Fingerprint Access Control System
+A biometric fingerpint access control system for controlling electromagnetic door locks. 
 
-A commercial-grade, standalone biometric access control system implemented in modular C++ for STM32 microcontrollers (such as STM32F103 Bluepill or STM32F411CE Blackpill). The hardware architecture features an onboard SOT-23 NPN transistor relay driver with flyback diode protection, CR2032 battery-backed hardware RTC continuous timekeeping, a 2.7 kHz resonant piezo audio engine, debounced button processing via the `Button` library, an AS608 biometric DSP state machine, direct-offset flash EEPROM persistence, and an SSD1306 OLED display with a constrained 4-character text input widget.
+## Features
+- Can enroll up to 300 fingerprints
+- Stores log of who has accessed the builidng
+- The log uses a rolling memory i.e when it is full it starts overwriting from the top
+- Firmware allows role assignment
+- Only users with specific roles can enroll new users, delete existing users and view logs
+- No companion app needed everything happens on device 
+- Employs a dry contact for driving the electromagnetic door lock
+- It has a real time clock which is used for logging the time a users accessed the building
 
 ---
 
