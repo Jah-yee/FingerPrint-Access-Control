@@ -1,5 +1,7 @@
+#include <sys/_stdint.h>
 #include <Arduino.h>
 #include "display.h"
+#include "myTime.h"
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
@@ -42,6 +44,9 @@ void displayTwoWords(const char *word1, const char *word2, const char *frameTitl
   display.println(word1);
   display.setCursor(50, 40);
   display.println(word2);
+  display.setCursor(0, 55);
+  display.setTextSize(1);
+  display.printf("%s %s\n",getTime(),getDate());
   display.display();
 }
 
@@ -122,9 +127,21 @@ void displayTextInput(char *name, int8_t cursorPos) {
 
 void displayOption(const char *text, const char* optionR, const char* optionL) {
   display.clearDisplay();
+    display.setTextWrap(0);
+
+    
   display.setTextSize(2);               // Normal 1:1 pixel scale
   display.setTextColor(SSD1306_WHITE);  // Draw white text
-  display.setCursor(20, 10);
+  //display.setCursor(20, 10);
+  //center text
+  int16_t x1, y1;
+  uint16_t width, height;
+  display.getTextBounds(text, 0, 0, &x1, &y1, &width, &height);
+  int x = ((SCREEN_WIDTH - width) / 2);
+  int y = ((SCREEN_HEIGHT - height) / 2);
+  display.setCursor(x, 10);
+  display.setTextWrap(false);
+
   display.println(text);
   display.setCursor(0, 50);
   display.print(optionL);
@@ -158,7 +175,7 @@ void display_three_words(const char* text1, const char* text2, const char* text3
   display.display();
 }
 
-void displayLogEntry(const char *name, const char *date, const char *time, int index, int total) {
+void displayLogEntry(const char *name, const char *date, const char *time, uint8_t doorState, int index, int total) {
   display.clearDisplay();
   char titleBuf[16];
   snprintf(titleBuf, sizeof(titleBuf), "Log %d/%d", index, total);
@@ -168,6 +185,9 @@ void displayLogEntry(const char *name, const char *date, const char *time, int i
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0, 20);
   display.print(name);
+  display.setCursor(30,20);
+  display.setTextSize(1);
+  display.print((doorState==1)?"unlocked":"locked");
   display.setCursor(65, 20);
 
   display.setTextSize(1);

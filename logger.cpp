@@ -26,7 +26,7 @@ void loggerInit() {
   debugf("Logger initialized. Found %d existing log entries.\n", count);
 }
 
-void logAccess(const char *name, bool granted) {
+void logAccess(const char *name, bool doorState) {
   LogRecord logRec;
   logRec.magic = LOG_MAGIC;
   
@@ -40,6 +40,9 @@ void logAccess(const char *name, bool granted) {
   
   strncpy(logRec.date, getDate(), sizeof(logRec.date) - 1);
   logRec.date[sizeof(logRec.date) - 1] = '\0';
+
+  logRec.doorState=doorState;
+  const char *door = doorState ? "unlocked" : "locked";
   
 
   // Find next insertion slot (circular buffer)
@@ -47,8 +50,8 @@ void logAccess(const char *name, bool granted) {
   int addr = getLogEEPROMAddress(logHead);
   EEPROM.put(addr, logRec);
   
-  debugf("Logged access: %s %s [%s %s] at slot %d\n",
-         logRec.name, "GRANTED" ,
+  debugf("Logged access: %s %s the door [%s %s] at slot %d\n",
+         logRec.name, door ,
          logRec.date, logRec.time, logHead);
 
   logHead = (logHead + 1) % MAX_LOGS;

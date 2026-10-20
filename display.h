@@ -22,6 +22,6 @@ void displayOption(const char *text, const char* optionR="NO>", const char* opti
 void displayCustomMenu(const char *title, const char *option1, const char *option2);
 void displayMenu(uint8_t page = 1);
 void display_three_words(const char* text1, const char* text2, const char* text3, int size);
-void displayLogEntry(const char *name, const char *date, const char *time, int index, int total);
+void displayLogEntry(const char *name, const char *date, const char *time, uint8_t doorState, int index, int total);
 void displayTimeInput(uint8_t day, uint8_t month, uint8_t year, uint8_t hours, uint8_t minutes, uint8_t fieldPos);
 #endif

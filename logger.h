@@ -13,10 +13,11 @@ struct LogRecord {
   char name[5];       // 4 characters + null
   char time[6];       // "HH:MM"
   char date[9];       // "DD/MM/YY"
+  uint8_t doorState=0;
 };
 
 void loggerInit();
-void logAccess(const char *name, bool granted);
+void logAccess(const char *name, bool doorState);
 int getLogCount();
 LogRecord getLog(int index);
 

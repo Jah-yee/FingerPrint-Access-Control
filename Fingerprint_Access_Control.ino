@@ -6,16 +6,30 @@
 #include "logger.h"
 #include "audio.h"
 #include "debugMacro.h"
+#include "door.h"
+
+typedef enum {
+  MENU,
+  ACCESS,
+  ENROLL,
+  DELETE,
+  LOG,
+  SET_TIME,
+  PASSAGE
+} menu_state;
 
 #define SPEAKER_PIN PA15
-#define DOOR_PIN PA4
+#define LATE_HOUR 22  // hour to automatically lock door if left open
+
 
 const char *EnrollModeHeader = "Enroll Mode";
 const char *AccessModeHeader = "Access Mode";
 const char *DeleteModeHeader = "Delete Mode";
-const char *LogModeHeader    = "Log Mode";
+const char *LogModeHeader = "Log Mode";
+const char *PassageModeHeader = "DOOR OPEN";
 
-char *mode = "access";   // start with access control mode
+menu_state mode = ACCESS;
+//char *mode = ACCESS;   // start with access control mode
 uint8_t menuPage = 1;    // main menu page (1 or 2)
 bool doorLocked = true;  // door is locked initially.
 bool UsersExists = false;
@@ -27,29 +41,29 @@ bool verifyMasterPermission(const char *modeHeader);
 
 void setup() {
   Serial.begin(115200);
+  delay(3000);
+  biometricsSetup();
   audioInit(SPEAKER_PIN);
   audioStartup();
-  debugln("starting time config");
-  timeConfig();
   buttonConfig();
   loggerInit();
-
   while (!checkDisplay())
     ;
   delay(1000);
-// deleteAllPrints();
-// deleteAll();
-  Serial.println("starting");
+  debugln("starting");
 
+  if (!timeConfig()) {
+    display_three_words("time", "not", "set", 2);
+    delay(2000);
+  }
   pinMode(DOOR_PIN, OUTPUT);
   lockDoor();
 
-  biometricsSetup();
 
   enrolledUsers = getEnrolledCount();
   if (enrolledUsers == 0) {
-    mode = "enroll";
-    Serial.println("No users found. Entering enroll mode.");
+    mode = ENROLL;
+    debugln("No users found. Entering enroll mode.");
   } else {
     UsersExists = true;
     debugf("found %i user(s)\n", enrolledUsers);
@@ -61,11 +75,11 @@ void setup() {
 
 void loop() {
   //checked
-  if (mode == "menu") {
+  if (mode == MENU) {
     debugf("in menu (page %d)\n", menuPage);
     displayMenu(menuPage);
     delay(300);
-    while (mode == "menu") {
+    while (mode == MENU) {
       if (menuPage == 1) {
         if (RIGHT_BUTTON.pressed()) {
           audioBeep();
@@ -74,21 +88,21 @@ void loop() {
           break;
         } else if (UP_BUTTON.pressed()) {
           audioBeep();
-          mode = "enroll";
+          mode = ENROLL;
           debugln("Selected: enroll");
           break;
         } else if (DOWN_BUTTON.pressed()) {
           audioBeep();
-          mode = "access";
+          mode = ACCESS;
           debugln("Selected: access");
           break;
         } else if (LEFT_BUTTON.pressed()) {
           audioBeep();
-          mode = "delete";
+          mode = DELETE;
           debugln("Selected: delete");
           break;
         }
-      } else { // menuPage == 2
+      } else {  // menuPage == 2
         if (RIGHT_BUTTON.pressed()) {
           audioBeep();
           menuPage = 1;
@@ -96,26 +110,26 @@ void loop() {
           break;
         } else if (UP_BUTTON.pressed()) {
           audioBeep();
-          mode = "log";
+          mode = LOG;
           debugln("Selected: log");
           break;
         } else if (DOWN_BUTTON.pressed()) {
           audioBeep();
-          mode = "settime";
+          mode = SET_TIME;
           debugln("Selected: settime");
           break;
         }
       }
     }
   }
-//checked
+  //checked
   /////////////////////////////////////// Enroll Mode //////////////////////////////////
-  if (mode == "enroll") {
+  if (mode == ENROLL) {
     if (UsersExists && !verifyMasterPermission(EnrollModeHeader)) {
-      mode = "menu";
+      mode = MENU;
     }
 
-    while (mode == "enroll") {
+    while (mode == ENROLL) {
       if (exit()) { break; }
       UserRecord user;
       uint16_t current_id = getNextAvailableID();
@@ -123,7 +137,7 @@ void loop() {
         debugln("no space for new enrollment");
         audioWarning();
         displayTwoWords("no", "space", EnrollModeHeader);
-        mode = "menu";
+        mode = MENU;
         delay(1500);
         break;
       }
@@ -132,7 +146,7 @@ void loop() {
       user.id = current_id;
 
       if (!UsersExists) {
-        user.notMaster = 0; // First user is Master
+        user.notMaster = 0;  // First user is Master
         debugln("First user initialized as Master");
         getUserName(user.name);
         user.name[sizeof(user.name) - 1] = '\0';
@@ -141,7 +155,7 @@ void loop() {
         user.name[sizeof(user.name) - 1] = '\0';
 
         // Ask if new user should be made a master
-        while (mode == "enroll") {
+        while (mode == ENROLL) {
           displayOption("Master??");
           char *option = choice();
           if (strcmp(option, "yes") == 0) {
@@ -160,7 +174,7 @@ void loop() {
       }
 
       // Enroll new user's fingerprint on AS608
-      while (mode == "enroll") {
+      while (mode == ENROLL) {
         if (exit()) { break; }
         uint8_t success = getFingerprintEnroll(current_id);
         debugf("enrollment result %i\n", success);
@@ -175,23 +189,23 @@ void loop() {
         delay(1500);
       }
 
-      while (mode == "enroll") {
+      while (mode == ENROLL) {
         if (exit()) { break; }
         displayOption("Again??");
         char *option = choice();
         if (strcmp(option, "yes") == 0) {
           break;
         } else if (strcmp(option, "no") == 0) {
-          mode = "access";
+          mode = ACCESS;
           break;
         }
       }
     }
   }
-//checked
+  //checked
   /////////////////////////////////////// Access Mode //////////////////////////////////
-  if (mode == "access") {
-    while (mode == "access") {
+  if (mode == ACCESS) {
+    while (mode == ACCESS) {
       if (exit()) { break; }
       displayTwoWords("Place", "Finger", AccessModeHeader);
       SensorRsp rsp = getFingerprintID();
@@ -203,10 +217,40 @@ void loop() {
         audioAccessGranted();
         displayTwoWords("Welcome", user.name, AccessModeHeader);
         unlockDoor();
-        delay(4000);
-        lockDoor();
-        displayWord("Logging",AccessModeHeader);
-        logAccess(user.name, true);// log only successful entry
+        if (user.notMaster == 0) {
+          long currentMills = millis();
+          while (millis() - currentMills < 5000) {
+            char time_buff[11];
+            snprintf(time_buff, sizeof(time_buff), "till %iPM?", LATE_HOUR - 12);
+            displayOption(time_buff, "<NO  ", "YES> ");
+            char* currentChoice = choice();
+            if (currentChoice == "yes") {
+              // set alarm
+              setAlarm(LATE_HOUR, 0);
+              char buff[5];
+              snprintf(buff, sizeof(buff), "%iPM", LATE_HOUR - 12);
+              display_three_words("open", "till", buff, 2);
+              debugf("Alarm set for %iPM\n", LATE_HOUR-12);
+              //enter passage mode: door stays unlocked until LATE_HOUR
+              delay(1000);
+              mode = PASSAGE;
+              break;
+            } else if (currentChoice == "no") {
+              debugln("user selected no, locking door");
+              display_three_words("locking", "in four", "secs", 2);
+                             delay(4000);
+              lockDoor();
+              break;
+            }
+          }
+        } else {
+          delay(4000);
+          lockDoor();
+        }
+        // if an alarm has not been set, then lock the door
+
+        displayWord("Logging", AccessModeHeader);
+        logAccess(user.name, true);  // log only successful entry
       } else {
         debugf("sensor err: %s\n", rsp.msg);
         if (strcmp(rsp.msg, "no match") == 0) {
@@ -219,15 +263,15 @@ void loop() {
   }
   //checked
   /////////////////////////////////////// Delete Mode //////////////////////////////////
-  if (mode == "delete") {
+  if (mode == DELETE) {
     if (!verifyMasterPermission(DeleteModeHeader)) {
-      mode = "menu";
+      mode = MENU;
     }
 
-    while (mode == "delete") {
+    while (mode == DELETE) {
       if (exit()) { break; }
       displayCustomMenu("Query Opt", "U-Scroll", "D-Name");
-      
+
       if (UP_BUTTON.pressed()) {
         audioBeep();
         debugln("Scroll mode selected");
@@ -248,7 +292,7 @@ void loop() {
         }
 
         int currentIndex = 0;
-        while (mode == "delete") {
+        while (mode == DELETE) {
           if (exit()) { break; }
           if (activeCount == 0) {
             displayTwoWords("No", "Users", DeleteModeHeader);
@@ -298,10 +342,10 @@ void loop() {
       } else if (DOWN_BUTTON.pressed()) {
         audioBeep();
         debugln("Name search delete selected");
-        char targetName[5] = {'@', '@', '@', '@', '\0'};
+        char targetName[5] = { '@', '@', '@', '@', '\0' };
         getUserName(targetName);
         targetName[4] = '\0';
-        
+
         int deletedCount = 0;
         for (uint16_t i = 1; i <= MAX_USERS; i++) {
           UserRecord u;
@@ -335,27 +379,27 @@ void loop() {
   }
   //checked
   /////////////////////////////////////// Log Mode //////////////////////////////////
-  if (mode == "log") {
+  if (mode == LOG) {
     if (!verifyMasterPermission(LogModeHeader)) {
-      mode = "menu";
+      mode = MENU;
     }
 
-    while (mode == "log") {
+    while (mode == LOG) {
       if (exit()) { break; }
       int totalLogs = getLogCount();
       if (totalLogs == 0) {
         audioWarning();
         displayTwoWords("No", "Logs", LogModeHeader);
         delay(1500);
-        mode = "menu";
+        mode = MENU;
         break;
       }
 
       int currentLogIdx = 0;
-      while (mode == "log") {
+      while (mode == LOG) {
         if (exit()) { break; }
         LogRecord rec = getLog(currentLogIdx);
-        displayLogEntry(rec.name, rec.date, rec.time, currentLogIdx + 1, totalLogs);
+        displayLogEntry(rec.name, rec.date, rec.time, rec.doorState, currentLogIdx + 1, totalLogs);
 
         if (UP_BUTTON.pressed()) {
           audioBeep();
@@ -369,9 +413,9 @@ void loop() {
   }
 
   /////////////////////////////////////// Set Time Mode //////////////////////////////////
-  if (mode == "settime") {
+  if (mode == SET_TIME) {
     if (!verifyMasterPermission("Set Time")) {
-      mode = "menu";
+      mode = MENU;
     }
 
     uint8_t hours = 12;
@@ -392,9 +436,9 @@ void loop() {
       year = (uint8_t)yVal;
     }
 
-    uint8_t fieldPos = 0; // 0=Hours, 1=Minutes, 2=Day, 3=Month, 4=Year
+    uint8_t fieldPos = 0;  // 0=Hours, 1=Minutes, 2=Day, 3=Month, 4=Year
 
-    while (mode == "settime") {
+    while (mode == SET_TIME) {
       displayTimeInput(day, month, year, hours, minutes, fieldPos);
 
       if (RIGHT_BUTTON.pressed()) {
@@ -405,14 +449,14 @@ void loop() {
 
       if (UP_BUTTON.pressed()) {
         audioBeep();
-        if (fieldPos == 0)      hours = (hours + 1) % 24;
+        if (fieldPos == 0) hours = (hours + 1) % 24;
         else if (fieldPos == 1) minutes = (minutes + 1) % 60;
         else if (fieldPos == 2) day = (day % 31) + 1;
         else if (fieldPos == 3) month = (month % 12) + 1;
         else if (fieldPos == 4) year = (year + 1) % 100;
       } else if (DOWN_BUTTON.pressed()) {
         audioBeep();
-        if (fieldPos == 0)      hours = (hours == 0) ? 23 : hours - 1;
+        if (fieldPos == 0) hours = (hours == 0) ? 23 : hours - 1;
         else if (fieldPos == 1) minutes = (minutes == 0) ? 59 : minutes - 1;
         else if (fieldPos == 2) day = (day <= 1) ? 31 : day - 1;
         else if (fieldPos == 3) month = (month <= 1) ? 12 : month - 1;
@@ -424,16 +468,43 @@ void loop() {
         setManualDateTime(day, month, year, hours, minutes);
         displayTwoWords("Time", "Set", "Set Time");
         delay(1500);
-        mode = "menu";
+        mode = MENU;
         break;
       }
     }
   }
 
+  if (mode == PASSAGE) {
+    while (mode == PASSAGE) {
+      displayTwoWords("Scan to", "lock", PassageModeHeader);
+      //check aceess if true unlock
+      SensorRsp rsp = getFingerprintID();
+      if (!rsp.isError) {
+        char *endptr;
+        uint16_t id = (uint16_t)strtol(rsp.msg, &endptr, 10);
+        UserRecord user = getUser(id);
+        audioAccessGranted();
+        lockDoor();
+        logAccess(user.name, false);  // log who locked the door. false means the user locked the door
+        disableAlarm();               // disable alarm
+        mode = ACCESS;
+        break;
+      } else {
+        if (strcmp(rsp.msg, "no match") == 0) {
+          audioAccessDenied();
+          displayWord("Invalid", AccessModeHeader);
+          delay(1000);
+        }
+
+      }
+    }
+    //anyone can lock the door, but ask again to confirm if they want to lock it
+  }
 }
+
 bool verifyMasterPermission(const char *modeHeader) {
   if (enrolledUsers == 0) {
-    return true; // Bypass master check if no users exist
+    return true;  // Bypass master check if no users exist
   }
 
   debugf("Verifying Master permission for mode: %s\n", modeHeader);
@@ -476,19 +547,23 @@ bool verifyMasterPermission(const char *modeHeader) {
   }
 }
 
+// bool checkAccess(UserRecord *&user) {
+//   SensorRsp rsp = getFingerprintID();
+//   if (!rsp.isError) {
+//     char *endptr;
+//     uint16_t id = (uint16_t)strtol(rsp.msg, &endptr, 10);
+
+//     user = getUser(id);  // This will now modify the caller's pointer!
+//     return true;
+//   }
+//   return false;
+// }
+
 bool exit() {
   bool buttonState = RIGHT_BUTTON.pressed();
   if (buttonState) {
     audioBeep();
-    mode = "menu";
+    mode = MENU;
   }
   return buttonState;
-}
-
-void lockDoor() {
-  digitalWrite(DOOR_PIN, 0);  // lock the door
-}
-
-void unlockDoor() {
-  digitalWrite(DOOR_PIN, 1);  // unlock the door
 }
